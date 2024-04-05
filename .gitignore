@@ -1,6 +1,8 @@
 # CAP staff-vacation
 _out
 *.db
+
+vacation.*
 *.sqlite
 connection.properties
 default-*.json
