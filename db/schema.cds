@@ -17,11 +17,12 @@ type Status : String enum {
 }
 
 entity Users : cuid, managed {
-    username : String;
-    password : String;
-    role     : Role;
-    requests : Association to many Requests
-                   on requests.user = $self;
+    username     : String;
+    password     : String;
+    role         : Role;
+    refreshToken : String;
+    requests     : Association to many Requests
+                       on requests.user = $self;
 }
 
 entity Requests : cuid, managed {
