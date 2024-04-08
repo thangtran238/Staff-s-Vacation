@@ -42,6 +42,6 @@ module.exports = async (srv) => {
     if (!updatedUser) {
       return req.reject(500, "Failed to update the user's token.");
     }
-    return req.reply(200, accessToken);
+    return req.info(200, accessToken);
   });
 };
