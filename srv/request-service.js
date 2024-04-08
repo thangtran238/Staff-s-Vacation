@@ -1,41 +1,41 @@
 const { verifyAccessToken } = require("./helpers/jwt");
 
 module.exports = (srv) => {
-  const { Requests } = cds.entities("vacation");
-  srv.before("*", "Requests", async (req) => {
+  const { Users, Requests } = cds.entities("vacation");
+
+  srv.before("*", async (req) => {
     const decoded = verifyAccessToken(req.headers.authorization);
     if (!decoded) return req.reject(402, "Your token is expired");
-    if (decoded.id !== undefined) {
-      req.data.user_ID = decoded.id;
-    } else {
-      req.error(404,"User ID is not available in the decoded token.");
-    }
+
+    const user = await SELECT.from(Users).where({ ID: decoded.id });
+    if (user.length === 0) req.reject(404, "Couldn't find this user!!!");
+
+    req.data.user_ID = decoded.id;
   });
 
   srv.before("UPDATE", "Requests", async (req) => {
-    const { data } = req;
     try {
       const findRequest = await SELECT.one
         .from(Requests)
-        .where({ ID: data.ID });
+        .where({ ID: req.params });
+
       if (!findRequest) {
-        req.error({
+        console.log("Reject request");
+        return req.reject({
           code: 404,
-          message: "Request not found",
+          message: "Couldn't find this request to update.",
         });
-        return;
       }
 
       if (findRequest.status !== "pending") {
-        req.error({
-          code: 403,
-          message: "Cannot update request ",
-        });
+        console.log("Reject request due to status");
+        return req.reject(403, "Cannot update request");
       }
     } catch (error) {
-      req.error({
+      console.error("Error occurred during request update:", error);
+      return req.reject({
         code: 500,
-        message: error,
+        message: error.message,
       });
     }
   });
@@ -62,8 +62,8 @@ module.exports = (srv) => {
       }
     } catch (error) {
       req.error({
-        code: 500,
-        message: error,
+        code: error.code,
+        message: error.message,
       });
     }
   });
