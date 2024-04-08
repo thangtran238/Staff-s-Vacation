@@ -26,9 +26,8 @@ entity Users : cuid, managed {
 }
 
 entity Requests : cuid, managed {
-    status    : Status default 'pending';
-    reason    : String;
-    user      : Association to Users;
-    endDate   : Date;
-    startDate : Date;
+    status : Status default 'pending';
+    reason : String;
+    user   : Association to Users;
+    dayOff : Integer;
 }
