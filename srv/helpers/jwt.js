@@ -12,7 +12,7 @@ const generateAccessToken = (user) => {
       role: user.role,
     },
     accessTokenKey,
-    { expiresIn: "1h" }
+    { expiresIn: "2h" }
   );
 };
 
@@ -28,15 +28,12 @@ const generateRefreshToken = (user) => {
 };
 
 const verifyAccessToken = (token) => {
+  const accessToken = token.split(" ")[1]
   try {
-    const decoded = jwt.verify(token, process.env.ACCESS_TOKEN);
-    return decoded;
+    const decoded = jwt.verify(accessToken, process.env.ACCESS_TOKEN);
+    return decoded
   } catch (err) {
-    const decoded = jwt.decode(token);
-    return {
-      id: decoded.id,
-      exp: decoded.exp,
-    };
+    return
   }
 };
 
