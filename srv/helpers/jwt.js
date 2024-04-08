@@ -28,12 +28,13 @@ const generateRefreshToken = (user) => {
 };
 
 const verifyAccessToken = (token) => {
-  const accessToken = token.split(" ")[1]
   try {
+    const accessToken = token.split(" ")[1];
+    if (!accessToken) return;
     const decoded = jwt.verify(accessToken, process.env.ACCESS_TOKEN);
-    return decoded
+    return decoded;
   } catch (err) {
-    return
+    return;
   }
 };
 

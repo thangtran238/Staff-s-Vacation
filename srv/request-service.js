@@ -8,7 +8,7 @@ module.exports = (srv) => {
     if (decoded.id !== undefined) {
       req.data.user_ID = decoded.id;
     } else {
-      console.error("User ID is not available in the decoded token.");
+      req.error(404,"User ID is not available in the decoded token.");
     }
   });
 
@@ -32,11 +32,11 @@ module.exports = (srv) => {
           message: "Cannot update request ",
         });
       }
-    } catch (error){
-        req.error({
-          code:500,
-          massage:error
-        })
+    } catch (error) {
+      req.error({
+        code: 500,
+        message: error,
+      });
     }
   });
 
@@ -60,12 +60,11 @@ module.exports = (srv) => {
           message: "Cannot delete request ",
         });
       }
-    } catch (error){
-        req.error({
-          code:500,
-          massage:error
-        })
+    } catch (error) {
+      req.error({
+        code: 500,
+        message: error,
+      });
     }
   });
-
 };
