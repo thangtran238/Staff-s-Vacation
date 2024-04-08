@@ -34,7 +34,7 @@ module.exports = (srv) => {
     } catch (error) {
       console.error("Error occurred during request update:", error);
       return req.reject({
-        code: 500,
+        code: error.status,
         message: error.message,
       });
     }
