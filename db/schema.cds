@@ -27,7 +27,7 @@ entity Users : cuid, managed {
     totalDayOff  : Decimal(10, 2);
     requests     : Association to many Requests
                        on requests.user = $self;
-    department  : Association to one Departments;
+    department   : Association to one Departments;
 }
 
 entity Requests : cuid, managed {
@@ -41,6 +41,12 @@ entity Requests : cuid, managed {
 entity Departments : cuid, managed {
     departmentName : String;
     members        : Association to many Users
-                         on members.department = $self;
+                         on members.ID;
+}
 
+entity Notifications : cuid, managed {
+    sender    : Association to Users on sender.ID;
+    receivers : Association to many Users on receivers.ID;
+    message   : String;
+    read      : Boolean default 'false';
 }
