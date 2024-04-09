@@ -27,7 +27,7 @@ entity Users : cuid, managed {
     totalDayOff  : Decimal(10, 2);
     requests     : Association to many Requests
                        on requests.user = $self;
-    department  : Association to one Departments;
+    department   : Association to one Departments;
 }
 
 entity Requests : cuid, managed {
@@ -38,9 +38,9 @@ entity Requests : cuid, managed {
     endDay   : Date;
 }
 
-entity Departments : cuid, managed {
-    departmentName : String;
-    members        : Association to many Users
-                         on members.department = $self;
-
+entity Departments : managed {
+    key id             : Integer;
+        departmentName : String;
+        members        : Association to many Users
+                             on members.department = $self;
 }

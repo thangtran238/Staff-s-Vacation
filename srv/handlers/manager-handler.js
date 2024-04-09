@@ -1,23 +1,14 @@
 const cds = require("@sap/cds");
 const { Requests } = cds.entities;
-const { roleChecking } = require("../helpers/role");
+
 const managerHandler = {
   getRequests: async (req) => {
-    const isManager = roleChecking(req.data.authentication.role);
-    if (!isManager) {
-      return req.reject(401, "You are not a manager!");
-    }
-
     const requests = await cds.read(Requests);
     if (requests.length === 0) return req.info(200, "There isn't any request!");
     return req.info(200, requests);
   },
-  update: async (req) => {
-    const isManager = roleChecking(req.data.authentication.role);
-    if (!isManager) {
-      return req.reject(401, "You are not a manager!");
-    }
 
+  update: async (req) => {
     const isExistedRequest = await cds
       .read(Requests)
       .where({ ID: req.data.request, status: "pending" });
