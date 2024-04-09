@@ -12,6 +12,32 @@ module.exports = (srv) => {
 
     req.data.user_ID = decoded.id;
   });
+  
+  srv.before('CREATE','Requests',async(req)=>{
+    const { data } = req;
+    const user = await SELECT.one.from(Users).where({ID:data.user_ID});
+    const createdAt = new Date(user.createdAt);
+    const currentYear = new Date().getFullYear();
+    if(createdAt.getFullYear === currentYear){
+        const endOfYear = new Date(currentYear, 11, 31);
+        const monthsPassed = (endOfYear.getFullYear() - createdAt.getFullYear()) * 12 + (endOfYear.getMonth() - createdAt.getMonth());
+        const totalDaysOff = monthsPassed * 1.25;
+        await UPDATE(Users).set({ totalDaysOff: totalDaysOff }).where({ ID: data.user_ID });
+    }
+    else{
+        const reqCurrentUser = await SELECT.from.where({user:user});
+        let totalDaysOff = 0;
+        for (const req of reqCurrentUser) {
+          const startDate = new Date(req.startDate);
+          const endDate = new Date(req.endDate);
+          const daysOff = (endDate - startDate) / (1000 * 3600 * 24);
+          totalDaysOff += daysOff;
+      }
+      await UPDATE(Users).set({ totalDaysOff: totalDaysOff }).where({ ID: data.user_ID });
+    }
+    
+  });
+
 
   srv.before("UPDATE", "Requests", async (req) => {
     try {
