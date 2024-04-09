@@ -19,7 +19,7 @@ type Status : String enum {
 entity Users : cuid, managed {
     username     : String;
     password     : String;
-    fullname     : String;
+    fname        : String;
     isActive     : Boolean default 'true';
     address      : String;
     role         : Role default 'staff';
@@ -27,7 +27,7 @@ entity Users : cuid, managed {
     totalDayOff  : Decimal(10, 2);
     requests     : Association to many Requests
                        on requests.user = $self;
-    departments  : Association to Departments;
+    department  : Association to one Departments;
 }
 
 entity Requests : cuid, managed {
@@ -39,8 +39,8 @@ entity Requests : cuid, managed {
 }
 
 entity Departments : cuid, managed {
-    name    : String;
-    members : Association to many Users
-                  on members.departments = $self;
+    departmentName : String;
+    members        : Association to many Users
+                         on members.department = $self;
 
 }
