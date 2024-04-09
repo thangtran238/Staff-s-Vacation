@@ -2,6 +2,19 @@ using vacation from '../db/schema';
 
 
 service AuthService @(path: '/auth') {
-    entity Users as projection on vacation.Users;
-    action login(username : String, password : String) returns String;
+
+    @readonly
+    entity Users as
+        projection on vacation.Users
+        excluding {
+            password,
+            createdBy,
+            createdAt,
+            modifiedBy,
+            modifiedAt,
+            refreshToken
+        };
+
+    action login(username : String, password : String)                                                   returns String;
+    action signup(username : String, password : String, fname : String, address : String, role : String) returns String;
 }
