@@ -40,10 +40,13 @@ entity Requests : cuid, managed {
 
 
 entity Notifications : cuid, managed {
-    sender    : Association to Users on sender.ID;
-    receivers : Association to many Users on receivers.ID;
+    sender    : Association to Users
+                    on sender.ID;
+    receivers : Association to many Users
+                    on receivers.ID;
     message   : String;
     read      : Boolean default 'false';
+}
 
 entity Departments : managed {
     key id             : Integer;

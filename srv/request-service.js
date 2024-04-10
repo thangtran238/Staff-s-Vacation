@@ -1,17 +1,9 @@
-const { verifyAccessToken } = require("./helpers/jwt");
+const { authentication } = require("./middlewares/guard");
 
 module.exports = (srv) => {
   const { Users, Requests } = cds.entities("vacation");
 
-  srv.before("*", async (req) => {
-    const decoded = verifyAccessToken(req.headers.authorization);
-    if (!decoded) return req.reject(402, "Your token is expired");
-
-    const user = await SELECT.from(Users).where({ ID: decoded.id });
-    if (user.length === 0) req.reject(404, "Couldn't find this user!!!");
-
-    req.data.user_ID = decoded.id;
-  });
+  srv.before("*","Request", authentication);
 
   srv.before("UPDATE", "Requests", async (req) => {
     try {
@@ -67,4 +59,7 @@ module.exports = (srv) => {
       });
     }
   });
+
 };
+
+
