@@ -20,7 +20,7 @@ entity Users : cuid, managed {
     username     : String;
     password     : String;
     fname        : String;
-    isActive     : Boolean default 'true';
+    isActive     : Boolean default true;
     address      : String;
     role         : Role default 'staff';
     refreshToken : String;
@@ -38,15 +38,17 @@ entity Requests : cuid, managed {
     endDay   : Date;
 }
 
-entity Departments : cuid, managed {
-    departmentName : String;
-    members        : Association to many Users
-                         on members.ID;
-}
 
 entity Notifications : cuid, managed {
     sender    : Association to Users on sender.ID;
     receivers : Association to many Users on receivers.ID;
     message   : String;
     read      : Boolean default 'false';
+
+entity Departments : managed {
+    key id             : Integer;
+        departmentName : String;
+        members        : Association to many Users
+                             on members.department = $self;
+
 }
