@@ -20,7 +20,7 @@ entity Users : cuid, managed {
     username     : String;
     password     : String;
     fname        : String;
-    isActive     : Boolean default 'true';
+    isActive     : Boolean default true;
     address      : String;
     role         : Role default 'staff';
     refreshToken : String;

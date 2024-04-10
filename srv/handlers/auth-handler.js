@@ -12,7 +12,7 @@ const authHandler = {
     if (!user || user.length !== 1)
       return req.reject(401, "Invalid username or password");
 
-    if (!(await bcrypt.compare(req.data.password, user[0].password))) {
+    if (!(req.data.password === user[0].password)) {
       return req.reject(401, "Invalid password");
     }
     const accessToken = generateAccessToken(user[0]);
