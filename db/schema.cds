@@ -38,9 +38,17 @@ entity Requests : cuid, managed {
     endDay   : Date;
 }
 
+
+entity Notifications : cuid, managed {
+    sender    : Association to Users on sender.ID;
+    receivers : Association to many Users on receivers.ID;
+    message   : String;
+    read      : Boolean default 'false';
+
 entity Departments : managed {
     key id             : Integer;
         departmentName : String;
         members        : Association to many Users
                              on members.department = $self;
+
 }
