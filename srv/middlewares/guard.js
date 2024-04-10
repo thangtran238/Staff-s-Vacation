@@ -7,7 +7,6 @@ const guard = {
   authentication: async (req) => {
     const decoded = verifyAccessToken(req.headers.authorization);
     if (!decoded) return req.reject(402, "Your token is expired");
-
     const tx = cds.transaction(req);
 
     const user = await tx.run(SELECT.from(Users).where({ ID: decoded.id }));
@@ -21,7 +20,7 @@ const guard = {
   },
 
   managerAuthorization: async (req) => {
-    await guard.authentication(req); 
+    await guard.authentication(req);
     const { authentication } = req.data;
     if (authentication.role !== "manager")
       return req.reject(403, "You're not the manager!");

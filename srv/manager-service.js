@@ -1,5 +1,5 @@
 const { invite, create } = require("./handlers/department-handler");
-const { update, getRequests, pinToken } = require("./handlers/manager-handler");
+const { update, getRequests } = require("./handlers/manager-handler");
 const { managerAuthorization } = require("./middlewares/guard");
 
 module.exports = async (srv) => {

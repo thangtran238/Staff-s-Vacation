@@ -20,6 +20,7 @@ service ManagerService @(path: '/manage') {
     entity Requests         as projection on vacation.Requests; 
     entity Users            as projection on vacation.Users;
     entity Departments      as projection on vacation.Departments;
+    entity Notifications as projection on vacation.Notifications;
     action createDepartment(departmentName : String)                     returns String;
     action inviteMember(department : Integer, members : array of String) returns String;
     action updateRequest(request : String, action : String)              returns String;

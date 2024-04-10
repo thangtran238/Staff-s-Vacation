@@ -5,18 +5,15 @@ const managerHandler = {
     const user = await SELECT.one
       .from(Users)
       .where({ ID: req.data.authentication.id });
-    console.log(user.department_id);
     const requests = res.filter(
       (request) => request.department_id === user.department_id
     );
-    console.log(requests);
-    req.results = requests;
     if (req.results.length === 0)
       return req.reject(400, "There isn't any request!");
+    req.results = requests;
   },
 
   update: async (req) => {
-    console.log(req.data);
     const request = await SELECT.one
       .from(Requests)
       .where({ ID: req.data.request });
