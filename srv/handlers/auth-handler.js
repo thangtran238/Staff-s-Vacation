@@ -45,9 +45,33 @@ const authHandler = {
       password: hashedPassword,
       role: req.data.role ? req.data.role : "staff",
     });
-
+    const newUser = await SELECT.one.from(Users).where({ username: req.data.username });
+    if (!newUser) {
+      return req.reject(500, "Failed to retrieve user information after signup.");
+  }
+    await calculateVacationDays(newUser.ID);
     return req.info(200, "Welcome to the system!");
   },
+
+ 
+
+
+};
+
+const calculateVacationDays = async (user_id) => {
+  try {
+    const user = await SELECT.one.from(Users).where({ ID: user_id });
+    const createdAt = new Date(user.createdAt);
+    const currentYear = new Date().getFullYear();
+    if (createdAt.getFullYear() === currentYear) {
+      const endOfYear = new Date(currentYear, 11, 31);
+      const monthsPassed = endOfYear.getMonth() - createdAt.getMonth();
+      const dayOffThisYear = monthsPassed * 1.25;
+      await UPDATE(Users).set({ dayOffThisYear: dayOffThisYear }).where({ ID: user_id });
+    }
+  } catch (error) {
+    return { code: 500, message: error.message || "Internal Server Error" };
+  }
 };
 
 module.exports = authHandler;

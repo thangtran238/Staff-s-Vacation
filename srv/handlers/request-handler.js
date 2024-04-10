@@ -1,4 +1,5 @@
 const cds = require("@sap/cds");
+const cron = require('node-cron');
 const { SELECT, UPDATE, INSERT } = cds.ql;
 const {Users,Requests} =  cds.entities
 const requestHandler = {
@@ -7,41 +8,18 @@ const requestHandler = {
       const startDay = new Date(req.data.startDay);
       const endDay = new Date(req.data.endDay);
       const currentDate = new Date();
+  
       if (startDay < currentDate || endDay < currentDate) {
         return req.reject(
           400,
           "Start day and end day must be after the current date."
         );
       }
-      if (endDay <= startDay) {
+      else if (endDay <= startDay) {
         return req.reject(400, "End day must be after start day.");
       }
-
-
-      ///////////////////////////////
-      const user = await SELECT.one.from(Users).where({ ID: req.data.authentication.id });
-      console.log(user);
-      const createdAt = new Date(user.createdAt);
-      const currentYear = new Date().getFullYear();
-      if (createdAt.getFullYear() === currentYear) {
-        const endOfYear = new Date(currentYear, 11, 31);
-        const monthsPassed = (endOfYear.getFullYear() - createdAt.getFullYear()) * 12 + (endOfYear.getMonth() - createdAt.getMonth());
-        const totalDaysOff = monthsPassed * 1.25;
-        await UPDATE(Users).set({ totalDayOff : totalDaysOff }).where({ ID: req.data.authentication.id });
-      } 
-      else {
-        const reqCurrentUser = await SELECT.from(Requests).where({ user_ID: user.ID });
-        let totalDaysOff = 0;
-        for (const req of reqCurrentUser) {
-          const startDate = new Date(req.startDay);
-          const endDate = new Date(req.endDay);
-          const daysOff = (endDate - startDate) / (1000 * 3600 * 24);
-          totalDaysOff += daysOff;
-        }
-        await UPDATE(Users).set({ totalDaysOff: totalDaysOff }).where({ ID: req.data.authentication.id });
-      }
-     //////////////////////////////////////
-         await INSERT.into(Requests).entries({
+      
+      await INSERT.into(Requests).entries({
         reason: req.data.reason,
         startDay: req.data.startDay,
         endDay: req.data.endDay,
@@ -54,6 +32,7 @@ const requestHandler = {
       });
     }
   },
+  
   update: async (req) => {
     try {
       const findRequest = await SELECT.one.from(Requests).where({ ID: req.data.ID });
@@ -83,10 +62,33 @@ const requestHandler = {
       return req.reject(error.status || 500, error.message || "Internal Server Error");
     }
   },
+  recalculateVacationDays: async () => {
+    try {
+      const allUsers = await SELECT.from(Users);
+      for (const user of allUsers) {
+        let  dayOffThisYear =  user.dayOffThisYear ;
+        let dayOffLastYear =  user.dayOffLastYear ;
+        if ( dayOffThisYear === 0) {
+          dayOffLastYear = 0
+          dayOffThisYear = 12 * 1.25;
+        } else if ( dayOffThisYear > 0 &&  dayOffThisYear <= 5) {
+        dayOffLastYear =  dayOffThisYear;
+          dayOffThisYear = 12 * 1.25;
+          
+        } else if ( dayOffThisYear > 5) {
+        dayOffLastYear = 5;
+          dayOffThisYear = 12 * 1.25;
+        }
+        await UPDATE(Users).set({ dayOffThisYear,dayOffLastYear }).where({ ID: user.ID });
+      }
+    } catch (error) {
+      return { status: 500, message:error};
+    }
+  },
+  
 };
-
-const roleChecking = (role) => {
-  return role === "staff";
-};
-
+cron.schedule('59 23 31 12 *', async () => {
+  await requestHandler.recalculateVacationDays();
+  return { status: 200, message: "Vacation days recalculated successfully." };
+});
 module.exports = requestHandler;
