@@ -24,7 +24,8 @@ entity Users : cuid, managed {
     address      : String;
     role         : Role default 'staff';
     refreshToken : String;
-    totalDayOff  : Decimal(10, 2);
+    dayOffThisYear  : Decimal(10, 2) default 0;
+    dayOffLastYear  : Decimal(10, 2) default 0;
     requests     : Association to many Requests
                        on requests.user = $self;
     department   : Association to one Departments;

@@ -3,5 +3,8 @@ using vacation from '../db/schema';
 
 service RequestService @(path: '/request') {
     entity Requests as projection on vacation.Requests;
-    function calculateTotalDayOff(user_id : Integer) returns Decimal(10, 2)
+    action  createRequest(reason : String,startDay:Date,endDay:Date) returns String;
+    action  updateRequest(request : String) returns String;
+    action  deleteRequest(request : String) returns String;
+   
 }
