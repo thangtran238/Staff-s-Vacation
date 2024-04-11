@@ -17,8 +17,7 @@ const requestHandler = {
       } else if (endDay <= startDay) {
         return req.reject(400, "End day must be after start day.");
       }
-      const daysOff = Math.ceil((endDay - startDay ) / (1000 * 60 * 60 * 24)); 
-      console.log(daysOff);
+      const daysOff = getAllDaysBetween(startDay,endDay).length
       const user = await SELECT.one.from(Users).where({ID:req.data.authentication.id})
       if (daysOff>(user.dayOffThisYear+user.dayOffLastYear)) {
         await INSERT.into(Requests).entries({
@@ -129,7 +128,22 @@ const requestHandler = {
     }
   },
 };
-
+const getAllDaysBetween = (startDay, endDay) => {
+  const days = [];
+  let currentDate = new Date(startDay);
+  for (
+    let date = currentDate;
+    date <= endDay;
+    date.setDate(date.getDate() + 1)
+  ) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    days.push(`${year}-${month}-${day}`);
+  }
+  console.log(days);
+  return days;
+};
 
 cron.schedule("59 23 31 12 *", async () => {
   await requestHandler.recalculateVacationDays();
