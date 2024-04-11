@@ -18,10 +18,8 @@ const requestHandler = {
         return req.reject(400, "End day must be after start day.");
       }
 
+      const daysOff = getAllDaysBetween(startDay,endDay).length
 
-
-      const daysOff = Math.ceil((endDay - startDay ) / (1000 * 60 * 60 * 24)); 
-      console.log(daysOff);
       const user = await SELECT.one.from(Users).where({ID:req.data.authentication.id})
       if (daysOff>(user.dayOffThisYear+user.dayOffLastYear)) {
         await INSERT.into(Requests).entries({
@@ -40,6 +38,7 @@ const requestHandler = {
           user_ID: req.data.authentication.id,
         });
       };
+
       const data = await SELECT.one
         .from(Requests)
         .where({
@@ -54,6 +53,7 @@ const requestHandler = {
         action: "new",
         data: data,
       };
+
     } catch (error) {
       req.error({
         code: error.code || 500,
@@ -140,13 +140,30 @@ const requestHandler = {
       const allUsers = await SELECT.from(Users);
       for (const user of allUsers) {
         await UPDATE(Users).set({ dayOffLastYear: 0 }).where({ ID: user.ID });
-
       }
     } catch (error) {
       return { status: 500, message: error };
     }
   },
 };
+
+const getAllDaysBetween = (startDay, endDay) => {
+  const days = [];
+  let currentDate = new Date(startDay);
+  for (
+    let date = currentDate;
+    date <= endDay;
+    date.setDate(date.getDate() + 1)
+  ) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    days.push(`${year}-${month}-${day}`);
+  }
+  console.log(days);
+  return days;
+};
+
 
 cron.schedule("59 23 31 12 *", async () => {
   await requestHandler.recalculateVacationDays();
