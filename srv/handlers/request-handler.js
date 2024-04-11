@@ -18,12 +18,28 @@ const requestHandler = {
         return req.reject(400, "End day must be after start day.");
       }
 
-      await INSERT.into(Requests).entries({
-        reason: req.data.reason,
-        startDay: req.data.startDay,
-        endDay: req.data.endDay,
-        user_ID: req.data.authentication.id,
-      });
+
+
+      const daysOff = Math.ceil((endDay - startDay ) / (1000 * 60 * 60 * 24)); 
+      console.log(daysOff);
+      const user = await SELECT.one.from(Users).where({ID:req.data.authentication.id})
+      if (daysOff>(user.dayOffThisYear+user.dayOffLastYear)) {
+        await INSERT.into(Requests).entries({
+          reason: req.data.reason,
+          startDay: req.data.startDay,
+          endDay: req.data.endDay,
+          isOutofDay:true,
+          user_ID: req.data.authentication.id,
+        }); 
+      }
+      else {
+        await INSERT.into(Requests).entries({
+          reason: req.data.reason,
+          startDay: req.data.startDay,
+          endDay: req.data.endDay,
+          user_ID: req.data.authentication.id,
+        });
+      };
       const data = await SELECT.one
         .from(Requests)
         .where({
@@ -57,6 +73,12 @@ const requestHandler = {
       if (findRequest.status !== "pending") {
         return req.reject(403, "Cannot update request");
       }
+      await cds
+      .update(Requests)
+      .set({ reason: req.data.reason})
+      .where({ ID: req.data.ID});
+
+    return req.info(200, `update successfully`);
     } catch (error) {
       console.error("Error occurred during request update:", error);
       return req.reject(
@@ -77,6 +99,8 @@ const requestHandler = {
       if (findRequest.status !== "pending") {
         return req.reject(403, "Cannot delete request");
       }
+      await cds.run(DELETE.from(Requests).where({ ID: req.data.ID }));
+      return req.info(200, `delete successfully !`);
     } catch (error) {
       console.error("Error occurred during request deletion:", error);
       return req.reject(
@@ -104,14 +128,33 @@ const requestHandler = {
         await UPDATE(Users)
           .set({ dayOffThisYear, dayOffLastYear })
           .where({ ID: user.ID });
+
+      }
+    } catch (error) {
+      return { status: 500, message: error };
+    }
+  },
+
+  refreshDayOffLastYear: async () => {
+    try {
+      const allUsers = await SELECT.from(Users);
+      for (const user of allUsers) {
+        await UPDATE(Users).set({ dayOffLastYear: 0 }).where({ ID: user.ID });
+
       }
     } catch (error) {
       return { status: 500, message: error };
     }
   },
 };
+
 cron.schedule("59 23 31 12 *", async () => {
   await requestHandler.recalculateVacationDays();
-  return { status: 200, message: "Vacation days recalculated successfully." };
+  return req.info(  200, "Vacation days recalculated successfully." );
 });
+cron.schedule("59 23 31 3 *", async () => {
+  await requestHandler.refreshDayOffLastYear();
+  return req.info(  200, "refresh DayOffLastYear successfully." );
+});
+
 module.exports = requestHandler;
