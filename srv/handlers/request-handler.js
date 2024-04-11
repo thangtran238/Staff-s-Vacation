@@ -18,6 +18,7 @@ const requestHandler = {
         return req.reject(400, "End day must be after start day.");
       }
       const daysOff = Math.ceil((endDay - startDay ) / (1000 * 60 * 60 * 24)); 
+      console.log(daysOff);
       const user = await SELECT.one.from(Users).where({ID:req.data.authentication.id})
       if (daysOff>(user.dayOffThisYear+user.dayOffLastYear)) {
         await INSERT.into(Requests).entries({
@@ -132,11 +133,11 @@ const requestHandler = {
 
 cron.schedule("59 23 31 12 *", async () => {
   await requestHandler.recalculateVacationDays();
-  return { status: 200, message: "Vacation days recalculated successfully." };
+  return req.info(  200, "Vacation days recalculated successfully." );
 });
 cron.schedule("59 23 31 3 *", async () => {
   await requestHandler.refreshDayOffLastYear();
-  return { status: 200, message: "refresh DayOffLastYear successfully." };
+  return req.info(  200, "refresh DayOffLastYear successfully." );
 });
 
 module.exports = requestHandler;
