@@ -1,17 +1,19 @@
 const cds = require("@sap/cds");
-const { Departments, Users, Notifications } = cds.entities;
+const { Users, Notifications } = cds.entities;
 
 const notifyHandler = {
-  sending: async (req) => {
+  sending: async (res, req) => {
+    console.log(res);
     const { data } = req;
-    const getDepartment = await SELECT.one
-      .from(Departments)
-      .where({ ID: data.user_id });
+    const getUser = await SELECT.one
+      .from(Users)
+      .where({ ID: res.data.user_ID });
+
     const getManager = await SELECT.one
       .from(Users)
-      .where({ department_id: getDepartment.department_id, role: "manager" });
-    const notify = `Title: ${getDepartment.fname} sent you a request!! \n
-                    Body: ${req.reason}`;
+      .where({ department_id: getUser.department_id, role: "manager" });
+    const notify = `Title: ${getUser.fname} sent you a ${res.action} request!! \n
+                    Body: ${res.data.reason}`;
     const newNotification = await INSERT.into(Notifications).entries({
       sender: data.authentication.id,
       receivers: getManager.ID,
@@ -20,6 +22,11 @@ const notifyHandler = {
 
     if (!newNotification)
       return req.reject(400, "Something wrong in sending notification!");
+    req.results = {
+      code: 200,
+      message: "New notification has been sent",
+      data: res.data,
+    };
   },
 
   getNotification: async (res, req) => {
@@ -32,9 +39,7 @@ const notifyHandler = {
     req.results = notification;
   },
 
-  flaggedNotification: async (req) => {
-    
-  }
+  flaggedNotification: async (req) => {},
 };
 
 module.exports = notifyHandler;

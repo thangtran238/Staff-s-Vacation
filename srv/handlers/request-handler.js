@@ -17,6 +17,9 @@ const requestHandler = {
       } else if (endDay <= startDay) {
         return req.reject(400, "End day must be after start day.");
       }
+
+
+
       const daysOff = Math.ceil((endDay - startDay ) / (1000 * 60 * 60 * 24)); 
       console.log(daysOff);
       const user = await SELECT.one.from(Users).where({ID:req.data.authentication.id})
@@ -37,7 +40,20 @@ const requestHandler = {
           user_ID: req.data.authentication.id,
         });
       };
-      return req.info(201,'request sent successfully')
+      const data = await SELECT.one
+        .from(Requests)
+        .where({
+          reason: req.data.reason,
+          startDay: req.data.startDay,
+          endDay: req.data.endDay,
+          user_ID: req.data.authentication.id,
+        })
+        .orderBy("createdAt desc");
+      req.results = {
+        code: 200,
+        action: "new",
+        data: data,
+      };
     } catch (error) {
       req.error({
         code: error.code || 500,
@@ -112,6 +128,7 @@ const requestHandler = {
         await UPDATE(Users)
           .set({ dayOffThisYear, dayOffLastYear })
           .where({ ID: user.ID });
+
       }
     } catch (error) {
       return { status: 500, message: error };
@@ -123,13 +140,13 @@ const requestHandler = {
       const allUsers = await SELECT.from(Users);
       for (const user of allUsers) {
         await UPDATE(Users).set({ dayOffLastYear: 0 }).where({ ID: user.ID });
+
       }
     } catch (error) {
       return { status: 500, message: error };
     }
   },
 };
-
 
 cron.schedule("59 23 31 12 *", async () => {
   await requestHandler.recalculateVacationDays();
