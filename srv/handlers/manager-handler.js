@@ -68,14 +68,15 @@ const managerHandler = {
     if (manager.department_id !== user.department_id)
       return req.reject(402, "Your are not the manager of this request!!!");
 
-    let startDay = new Date(request.startDay);
-    let endDay = new Date(request.endDay);
+    let endDay = new Date(request.endDay + 'T00:00:00Z');
+    let startDay = new Date(request.startDay + 'T00:00:00Z');
+
+
     const days = getAllDaysBetween(startDay, endDay).length;
 
-    startDay = new Date(request.startDay);
-    endDay = new Date(request.endDay);
-    console.log(startDay);
-    console.log(endDay);
+    startDay = new Date(request.startDay + 'T00:00:00Z');
+    endDay = new Date(request.endDay + 'T00:00:00Z');
+
     const startDayMonth = startDay.getMonth();
     const endDayMonth = endDay.getMonth();
 
@@ -140,19 +141,19 @@ const managerHandler = {
             .where({ ID: user.ID });
       }
 
-      // await cds
-      //   .update(Requests)
-      //   .set({ status: req.data.action })
-      //   .where({ ID: req.data.request });
-      // const updatedRequest = await SELECT.one
-      //   .from(Requests)
-      //   .where({ ID: req.data.request });
+      await cds
+        .update(Requests)
+        .set({ status: req.data.action })
+        .where({ ID: req.data.request });
+      const updatedRequest = await SELECT.one
+        .from(Requests)
+        .where({ ID: req.data.request });
 
-      // req.results = {
-      //   code: 200,
-      //   action: req.data.action,
-      //   data: updatedRequest,
-      // };
+      req.results = {
+        code: 200,
+        action: req.data.action,
+        data: updatedRequest,
+      };
     }
   },
 };
