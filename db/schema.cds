@@ -37,6 +37,7 @@ entity Requests : cuid, managed {
     user     : Association to Users;
     startDay : Date;
     endDay   : Date;
+    isOutofDay: Boolean default 'false';
 }
 
 
