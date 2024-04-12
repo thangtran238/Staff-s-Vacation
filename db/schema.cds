@@ -19,7 +19,7 @@ type Status : String enum {
 entity Users : cuid, managed {
     username       : String;
     password       : String;
-    fname          : String;
+    fullName       : String;
     isActive       : Boolean default true;
     address        : String;
     role           : Role default 'staff';

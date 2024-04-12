@@ -13,14 +13,14 @@ const notifyHandler = {
       .where({ department_id: getUser.department_id, role: "manager" });
     let notify;
     if (res.action === "accepted" || res.action === "rejected") {
-      notify = responseMessage(getManager.fname, res.action, "");
+      notify = responseMessage(getManager.fullName, res.action, "");
     }
     if (
       res.action === "new" ||
       res.action === "update" ||
       res.action === "delete"
     ) {
-      notify = responseMessage(getUser.fname, res.action, res.data.reason);
+      notify = responseMessage(getUser.fullName, res.action, res.data.reason);
     }
 
     const newNotification = await INSERT.into(Notifications).entries({
