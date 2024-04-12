@@ -17,27 +17,30 @@ type Status : String enum {
 }
 
 entity Users : cuid, managed {
-    username     : String;
-    password     : String;
-    fname        : String;
-    isActive     : Boolean default true;
-    address      : String;
-    role         : Role default 'staff';
-    refreshToken : String;
-    dayOffThisYear  : Decimal(10, 2) default 0;
-    dayOffLastYear  : Decimal(10, 2) default 0;
-    requests     : Association to many Requests
-                       on requests.user = $self;
-    department   : Association to one Departments;
+    username       : String;
+    password       : String;
+    fname          : String;
+    isActive       : Boolean default true;
+    address        : String;
+    role           : Role default 'staff';
+    refreshToken   : String;
+    dayOffThisYear : Decimal(10, 2) default 0;
+    dayOffLastYear : Decimal(10, 2) default 0;
+    requests       : Association to many Requests
+                         on requests.user = $self;
+    department     : Association to one Departments;
 }
 
 entity Requests : cuid, managed {
-    status   : Status default 'pending';
-    reason   : String;
-    user     : Association to Users;
-    startDay : Date;
-    endDay   : Date;
-    isOutofDay: Boolean default 'false';
+    status       : Status default 'pending';
+    reason       : String;
+    user         : Association to Users;
+    startDay     : Date;
+    endDay       : Date;
+    isOutOfDay   : Boolean default 'false';
+    comment      : String default '';
+    notification : Association to Notifications
+                       on notification.request = $self;
 }
 
 
@@ -48,12 +51,21 @@ entity Notifications : cuid, managed {
                     on receivers.ID;
     message   : String;
     read      : Boolean default 'false';
+    request   : Association to Requests
+
 }
 
 entity Departments : managed {
     key id             : Integer;
         departmentName : String;
+        isHRDepartment : Boolean default 'false';
         members        : Association to many Users
                              on members.department = $self;
 
+}
+
+entity Calendar : cuid, managed {
+    startDay    : Date;
+    endDay      : Date;
+    holidayName : String;
 }

@@ -3,7 +3,6 @@ const { Users, Notifications } = cds.entities;
 
 const notifyHandler = {
   sending: async (res, req) => {
-    console.log(res);
     const { data } = req;
     const getUser = await SELECT.one
       .from(Users)
@@ -12,12 +11,23 @@ const notifyHandler = {
     const getManager = await SELECT.one
       .from(Users)
       .where({ department_id: getUser.department_id, role: "manager" });
-    const notify = `Title: ${getUser.fname} sent you a ${res.action} request!! \n
-                    Body: ${res.data.reason}`;
+    let notify;
+    if (res.action === "accepted" || res.action === "rejected") {
+      notify = responseMessage(getManager.fname, res.action, "");
+    }
+    if (
+      res.action === "new" ||
+      res.action === "update" ||
+      res.action === "delete"
+    ) {
+      notify = responseMessage(getUser.fname, res.action, res.data.reason);
+    }
+
     const newNotification = await INSERT.into(Notifications).entries({
       sender: data.authentication.id,
       receivers: getManager.ID,
       message: notify,
+      request_ID : res.data.ID
     });
 
     if (!newNotification)
@@ -40,6 +50,13 @@ const notifyHandler = {
   },
 
   flaggedNotification: async (req) => {},
+};
+
+const responseMessage = (name, action, reason) => {
+  if ((action === "new") | (action === "update") | (action === "delete"))
+    return `${name} has just sent you a(n) ${action} request with the reason : ${reason}.Check it out!!!`;
+  if ((action === "accepted") | (action === "rejected"))
+    return `${name} has ${action} your request. Check it out!!!`;
 };
 
 module.exports = notifyHandler;
