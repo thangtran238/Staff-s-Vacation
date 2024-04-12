@@ -1,5 +1,5 @@
 const cds = require("@sap/cds");
-const { Users, Requests } = cds.entities;
+const { Calendar, Users, Requests } = cds.entities;
 const managerHandler = {
   getRequests: async (req) => {
     const manager = await SELECT.one.from(Users).where({
@@ -15,7 +15,7 @@ const managerHandler = {
           col("endDay"),
           col.user((colUser) => {
             colUser("ID"),
-              colUser("fname"),
+              colUser("fullName"),
               colUser("address"),
               colUser("department_id");
           });
@@ -41,7 +41,7 @@ const managerHandler = {
           col("endDay"),
           col.user((colUser) => {
             colUser("ID"),
-              colUser("fname"),
+              colUser("fullName"),
               colUser("address"),
               colUser("department_id");
           });
@@ -59,8 +59,7 @@ const managerHandler = {
       .where({ ID: req.data.request });
     if (!request) return req.reject(404, "Couldn't find this request");
     if (request.status !== "pending")
-      return req.
-    reject(400, `You have ${request.status} this request!!!`);
+      return req.reject(400, `You have ${request.status} this request!!!`);
     const manager = await SELECT.one
       .from(Users)
       .where({ ID: req.data.authentication.id });
@@ -72,8 +71,9 @@ const managerHandler = {
     let endDay = new Date(request.endDay + "T23:59:59Z");
     let startDay = new Date(request.startDay + "T00:00:00Z");
 
-    const days = getAllDaysBetween(startDay, endDay).length;
-    console.log(days);
+    const removeWeekend = getAllDaysBetween(startDay, endDay);
+    const removeHoliday = await removeHolidays(removeWeekend);
+
     startDay = new Date(request.startDay + "T00:00:00Z");
     endDay = new Date(request.endDay + "T23:59:59Z");
 
@@ -83,46 +83,83 @@ const managerHandler = {
     if (startDayMonth >= 3) user.dayOffLastYear = 0;
 
     if (!user.dayOffLastYear) {
-      await UPDATE(Users).where({ ID: request.user_ID })
-            .set({ dayOffLastYear: 0, dayOffThisYear: { "-=": days } });
+      await UPDATE(Users)
+        .where({ ID: request.user_ID })
+        .set({
+          dayOffLastYear: 0,
+          dayOffThisYear: { "-=": removeHoliday.length },
+        });
     } else {
       if (startDayMonth < 3 && endDayMonth == 3) {
-        const { daysBeforeApril, daysAfterApril } = getDaysBeforeAfterApril(startDay,endDay);
+        const { daysBeforeApril, daysAfterApril } = getDaysBeforeAfterApril(removeHoliday);
         const newDayOffLastYear = user.dayOffLastYear - daysBeforeApril;
         
-          await UPDATE(Users).set({ dayOffThisYear: { "-=": daysAfterApril } }).where({ ID: user.ID });
-        
-        if (newDayOffLastYear > 0)
-          await UPDATE(Users).set({ dayOffLastYear: newDayOffLastYear }).where({ ID: user.ID });
-        
-        if (newDayOffLastYear == 0) 
-          await UPDATE(Users).set({dayOffLastYear: newDayOffLastYear}).where({ ID: user.ID });
-        
-        if (newDayOffLastYear < 0) 
-          await UPDATE(Users).set({ dayOffLastYear: 0, dayOffThisYear: { "+=": newDayOffLastYear }}).where({ ID: user.ID });
-        
-      } else {
-        const newDayOffLastYear = user.dayOffLastYear - days;
+        await UPDATE(Users)
+          .set({ dayOffThisYear: { "-=": daysAfterApril } })
+          .where({ ID: user.ID });
 
-        if (newDayOffLastYear > 0)
-          await UPDATE(Users).set({dayOffLastYear: { "-=": days }}).where({ ID: user.ID });
-        if (newDayOffLastYear == 0)
-          await UPDATE(Users).set({dayOffLastYear: { "-=": days }}).where({ ID: user.ID });
+        if (newDayOffLastYear >= 0)
+          await UPDATE(Users)
+            .set({ dayOffLastYear: newDayOffLastYear })
+            .where({ ID: user.ID });
+
         if (newDayOffLastYear < 0)
-          await UPDATE(Users).set({dayOffLastYear: 0,dayOffThisYear: { "+=": newDayOffLastYear },}).where({ ID: user.ID });
+          await UPDATE(Users)
+            .set({
+              dayOffLastYear: 0,
+              dayOffThisYear: { "+=": newDayOffLastYear },
+            })
+            .where({ ID: user.ID });
+      } else {
+        const newDayOffLastYear = user.dayOffLastYear - removeHoliday.length;
+
+        if (newDayOffLastYear >= 0)
+          await UPDATE(Users)
+            .set({ dayOffLastYear: { "-=": removeHoliday.length } })
+            .where({ ID: user.ID });
+        
+        if (newDayOffLastYear < 0)
+          await UPDATE(Users)
+            .set({
+              dayOffLastYear: 0,
+              dayOffThisYear: { "+=": newDayOffLastYear },
+            })
+            .where({ ID: user.ID });
       }
     }
 
-    await cds.update(Requests)
-            .set({ status: req.data.action, comment: req.data.comment })
-            .where({ ID: req.data.request });
-    const updatedRequest = await SELECT.one.from(Requests).where({ ID: req.data.request });
+    await cds
+      .update(Requests)
+      .set({ status: req.data.action, comment: req.data.comment })
+      .where({ ID: req.data.request });
+    const updatedRequest = await SELECT.one
+      .from(Requests)
+      .where({ ID: req.data.request });
     req.results = {
       code: 200,
       action: req.data.action,
       data: updatedRequest,
     };
   },
+};
+
+const removeHolidays = async (offDays) => {
+  const getHoliday = await SELECT.from(Calendar).where({
+    startDay: { between: offDays[0], and: offDays[offDays.length - 1] },
+    and: {
+      endDay: { between: offDays[0], and: offDays[offDays.length - 1] },
+    },
+  });
+  let totalHoliday = [];
+  getHoliday.map((holiday) => {
+    let endDay = new Date(holiday.endDay + "T23:59:59Z");
+    let startDay = new Date(holiday.startDay + "T00:00:00Z");
+    const holidayTerm = getAllDaysBetween(startDay, endDay);
+    totalHoliday.push(...holidayTerm);
+  });
+  offDays = offDays.filter((day) => !totalHoliday.includes(day));
+
+  return offDays;
 };
 
 const getAllDaysBetween = (startDay, endDay) => {
@@ -138,19 +175,19 @@ const getAllDaysBetween = (startDay, endDay) => {
     const day = String(date.getDate()).padStart(2, "0");
     days.push(`${year}-${month}-${day}`);
   }
-  
-  const weekDays = days.filter(day => {
+  const weekDays = days.filter((day) => {
     const date = new Date(day);
     const dayOfWeek = date.getDay();
-    return dayOfWeek !== 0 && dayOfWeek !== 6; 
+    return dayOfWeek !== 0 && dayOfWeek !== 6;
   });
-
   return weekDays;
 };
 
-const getDaysBeforeAfterApril = (startDay, endDay) => {
+const getDaysBeforeAfterApril = (offDays) => {
   let daysBeforeApril = 0;
   let daysAfterApril = 0;
+  const startDay = new Date(offDays[0] + "T00:00:00Z");
+  const endDay = new Date(offDays[offDays.length - 1] + "T23:59:59Z");
 
   for (let date = startDay; date <= endDay; date.setDate(date.getDate() + 1)) {
     if (date.getDay() !== 0 && date.getDay() !== 6) {

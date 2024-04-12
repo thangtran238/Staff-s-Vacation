@@ -39,7 +39,7 @@ const authHandler = {
     const hashedPassword = await bcrypt.hash(req.data.password, salt);
 
     await INSERT.into(Users).entries({
-      fname: req.data.fname,
+      fullName: req.data.fullName,
       address: req.data.address,
       username: req.data.username,
       password: hashedPassword,

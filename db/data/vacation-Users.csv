@@ -1,4 +1,4 @@
-username, password, fname, address, role, department_id,dayOffThisYear
+username, password, fullName, address, role, department_id,dayOffThisYear
 teri.vo,123123,Tam Vo,199 Dong Da, manager, 1,0
 royce.pham,123123, Nhan Pham, 199 Dong Da, staff, 1,0
 zef.tran,123123,Thang Tran,199 Dong Da, staff, 1,0
