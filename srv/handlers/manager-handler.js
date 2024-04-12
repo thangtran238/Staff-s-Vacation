@@ -59,7 +59,8 @@ const managerHandler = {
       .where({ ID: req.data.request });
     if (!request) return req.reject(404, "Couldn't find this request");
     if (request.status !== "pending")
-      return req.reject(400, `You have ${request.status} this request!!!`);
+      return req.
+    reject(400, `You have ${request.status} this request!!!`);
     const manager = await SELECT.one
       .from(Users)
       .where({ ID: req.data.authentication.id });
@@ -68,14 +69,13 @@ const managerHandler = {
     if (manager.department_id !== user.department_id)
       return req.reject(402, "Your are not the manager of this request!!!");
 
-    let endDay = new Date(request.endDay + 'T00:00:00Z');
-    let startDay = new Date(request.startDay + 'T00:00:00Z');
-
+    let endDay = new Date(request.endDay + "T23:59:59Z");
+    let startDay = new Date(request.startDay + "T00:00:00Z");
 
     const days = getAllDaysBetween(startDay, endDay).length;
-
-    startDay = new Date(request.startDay + 'T00:00:00Z');
-    endDay = new Date(request.endDay + 'T00:00:00Z');
+    console.log(days);
+    startDay = new Date(request.startDay + "T00:00:00Z");
+    endDay = new Date(request.endDay + "T23:59:59Z");
 
     const startDayMonth = startDay.getMonth();
     const endDayMonth = endDay.getMonth();
@@ -83,78 +83,45 @@ const managerHandler = {
     if (startDayMonth >= 3) user.dayOffLastYear = 0;
 
     if (!user.dayOffLastYear) {
-      await UPDATE(Users)
-        .where({ ID: request.user_ID })
-        .set({ dayOffLastYear: 0, dayOffThisYear: { "-=": days } });
+      await UPDATE(Users).where({ ID: request.user_ID })
+            .set({ dayOffLastYear: 0, dayOffThisYear: { "-=": days } });
     } else {
       if (startDayMonth < 3 && endDayMonth == 3) {
-        const { daysBeforeApril, daysAfterApril } = getDaysBeforeAfterApril(
-          startDay,
-          endDay
-        );
-        console.log(daysBeforeApril, daysAfterApril);
-        // se lay so du cua ngay nghi thang 3 - di cho ngay nghi nam ngoai
+        const { daysBeforeApril, daysAfterApril } = getDaysBeforeAfterApril(startDay,endDay);
         const newDayOffLastYear = user.dayOffLastYear - daysBeforeApril;
-        console.log(newDayOffLastYear);
-        await UPDATE(Users)
-          .set({ dayOffThisYear: { "-=": daysAfterApril } })
-          .where({ ID: user.ID });
+        
+          await UPDATE(Users).set({ dayOffThisYear: { "-=": daysAfterApril } }).where({ ID: user.ID });
+        
         if (newDayOffLastYear > 0)
-          await UPDATE(Users)
-            .set({ dayOffLastYear: newDayOffLastYear })
-            .where({ ID: user.ID });
-        if (newDayOffLastYear == 0)
-          await UPDATE(Users)
-            .set({
-              dayOffLastYear: newDayOffLastYear,
-            })
-            .where({ ID: user.ID });
-        if (newDayOffLastYear < 0) {
-          await UPDATE(Users)
-            .set({
-              dayOffLastYear: 0,
-              dayOffThisYear: { "+=": newDayOffLastYear },
-            })
-            .where({ ID: user.ID });
-        }
+          await UPDATE(Users).set({ dayOffLastYear: newDayOffLastYear }).where({ ID: user.ID });
+        
+        if (newDayOffLastYear == 0) 
+          await UPDATE(Users).set({dayOffLastYear: newDayOffLastYear}).where({ ID: user.ID });
+        
+        if (newDayOffLastYear < 0) 
+          await UPDATE(Users).set({ dayOffLastYear: 0, dayOffThisYear: { "+=": newDayOffLastYear }}).where({ ID: user.ID });
+        
       } else {
         const newDayOffLastYear = user.dayOffLastYear - days;
-        console.log(newDayOffLastYear);
+
         if (newDayOffLastYear > 0)
-          await UPDATE(Users)
-            .set({
-              dayOffLastYear: { "-=": days },
-            })
-            .where({ ID: user.ID });
+          await UPDATE(Users).set({dayOffLastYear: { "-=": days }}).where({ ID: user.ID });
         if (newDayOffLastYear == 0)
-          await UPDATE(Users)
-            .set({
-              dayOffLastYear: { "-=": days },
-            })
-            .where({ ID: user.ID });
+          await UPDATE(Users).set({dayOffLastYear: { "-=": days }}).where({ ID: user.ID });
         if (newDayOffLastYear < 0)
-          await UPDATE(Users)
-            .set({
-              dayOffLastYear: 0,
-              dayOffThisYear: { "+=": newDayOffLastYear },
-            })
-            .where({ ID: user.ID });
+          await UPDATE(Users).set({dayOffLastYear: 0,dayOffThisYear: { "+=": newDayOffLastYear },}).where({ ID: user.ID });
       }
-
-      await cds
-        .update(Requests)
-        .set({ status: req.data.action })
-        .where({ ID: req.data.request });
-      const updatedRequest = await SELECT.one
-        .from(Requests)
-        .where({ ID: req.data.request });
-
-      req.results = {
-        code: 200,
-        action: req.data.action,
-        data: updatedRequest,
-      };
     }
+
+    await cds.update(Requests)
+            .set({ status: req.data.action, comment: req.data.comment })
+            .where({ ID: req.data.request });
+    const updatedRequest = await SELECT.one.from(Requests).where({ ID: req.data.request });
+    req.results = {
+      code: 200,
+      action: req.data.action,
+      data: updatedRequest,
+    };
   },
 };
 
@@ -171,8 +138,14 @@ const getAllDaysBetween = (startDay, endDay) => {
     const day = String(date.getDate()).padStart(2, "0");
     days.push(`${year}-${month}-${day}`);
   }
-  console.log(days);
-  return days;
+  
+  const weekDays = days.filter(day => {
+    const date = new Date(day);
+    const dayOfWeek = date.getDay();
+    return dayOfWeek !== 0 && dayOfWeek !== 6; 
+  });
+
+  return weekDays;
 };
 
 const getDaysBeforeAfterApril = (startDay, endDay) => {
@@ -180,12 +153,14 @@ const getDaysBeforeAfterApril = (startDay, endDay) => {
   let daysAfterApril = 0;
 
   for (let date = startDay; date <= endDay; date.setDate(date.getDate() + 1)) {
-    if (date.getMonth() < 3) {
-      daysBeforeApril++;
-    } else if (date.getMonth() === 3) {
-      daysAfterApril++;
-    } else {
-      daysAfterApril++;
+    if (date.getDay() !== 0 && date.getDay() !== 6) {
+      if (date.getMonth() < 3) {
+        daysBeforeApril++;
+      } else if (date.getMonth() === 3) {
+        daysAfterApril++;
+      } else {
+        daysAfterApril++;
+      }
     }
   }
   return { daysBeforeApril, daysAfterApril };
