@@ -73,12 +73,7 @@ const calculateVacationDays = async (user_id) => {
     const createdAt = new Date(user.createdAt);
     const currentYear = new Date().getFullYear();
     if (createdAt.getFullYear() === currentYear) {
-      const endOfYear = new Date(currentYear, 11, 31);
-      const monthsPassed = endOfYear.getMonth() - createdAt.getMonth();
-      const dayOffThisYear = monthsPassed * 1.25;
-      await UPDATE(Users)
-        .set({ dayOffThisYear: dayOffThisYear })
-        .where({ ID: user_id });
+      await UPDATE(Users).set({ dayOffThisYear: 1.25 }).where({ ID: user_id });
     }
   } catch (error) {
     return { code: 500, message: error.message || "Internal Server Error" };

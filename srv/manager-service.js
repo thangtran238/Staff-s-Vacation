@@ -3,8 +3,9 @@ const {
   update,
   getRequests,
   getRequest,
+  calculatingDayOff,
 } = require("./handlers/manager-handler");
-const { sending } = require("./handlers/notify-handler");
+const { sending, flaggedNotification } = require("./handlers/notify-handler");
 const { managerAuthorization } = require("./middlewares/guard");
 
 module.exports = async (srv) => {
@@ -13,6 +14,10 @@ module.exports = async (srv) => {
   srv.on("getRequest", getRequest);
   srv.on("createDepartment", create);
   srv.on("inviteMember", invite);
-  srv.on("updateRequest", update);
-  srv.after("updateRequest", sending);
+  srv.on("updateRequest", calculatingDayOff);
+  srv.after("updateRequest", update);
+  srv.after("READ", "Notifications", flaggedNotification);
+
+  const messaging = await cds.connect.to("messaging");
+  messaging.on("notifyManager", sending);
 };

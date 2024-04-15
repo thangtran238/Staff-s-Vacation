@@ -16,15 +16,16 @@ type Status : String enum {
     rejected;
 }
 
+
 entity Users : cuid, managed {
-    username       : String;
+    username       : String  @mandatory  @assert.unique;
     password       : String;
     fullName       : String;
     isActive       : Boolean default true;
     address        : String;
     role           : Role default 'staff';
     refreshToken   : String;
-    dayOffThisYear : Decimal(10, 2) default 0;
+    dayOffThisYear : Decimal(10, 2) default 1.25;
     dayOffLastYear : Decimal(10, 2) default 0;
     requests       : Association to many Requests
                          on requests.user = $self;
@@ -37,7 +38,7 @@ entity Requests : cuid, managed {
     user         : Association to Users;
     startDay     : Date;
     endDay       : Date;
-    isOutOfDay   : Boolean default 'false';
+    isOutOfDay   : Boolean default false;
     comment      : String default '';
     notification : Association to Notifications
                        on notification.request = $self;
@@ -45,12 +46,12 @@ entity Requests : cuid, managed {
 
 
 entity Notifications : cuid, managed {
-    sender    : Association to Users
-                    on sender.ID;
-    receivers : Association to many Users
-                    on receivers.ID;
+    sender    : Association to Users;
+    
+    receiver : Association to Users;
+                
     message   : String;
-    isRead    : Boolean default 'false';
+    isRead    : Boolean default false;
     request   : Association to Requests
 
 }
@@ -58,7 +59,7 @@ entity Notifications : cuid, managed {
 entity Departments : managed {
     key id             : Integer;
         departmentName : String;
-        isHRDepartment : Boolean default 'false';
+        isHRDepartment : Boolean default false;
         members        : Association to many Users
                              on members.department = $self;
 

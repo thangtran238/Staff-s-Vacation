@@ -1,4 +1,6 @@
 const cds = require("@sap/cds");
+const { authentication } = require("../middlewares/guard");
+
 const { Calendar, Users, Requests } = cds.entities;
 const managerHandler = {
   getRequests: async (req) => {
@@ -21,9 +23,11 @@ const managerHandler = {
           });
       })
       .where("user.department_id", "=", manager.department_id);
-    if (requests.length === 0)
+
+    if (requests.length === 0) {
       return req.info(202, "There aren't any request yet!");
-    req.results = { code: 200, message: requests };
+    }
+    return (req.results = { code: 200, message: requests });
   },
 
   getRequest: async (req) => {
@@ -53,11 +57,39 @@ const managerHandler = {
     req.results = { code: 200, message: request };
   },
 
-  update: async (req) => {
+  update: async (_, req) => {
     try {
-      const request = await SELECT.one
+      const messaging = await cds.connect.to("messaging");
+
+      const { data } = req;
+      await cds
+        .update(Requests)
+        .set({ status: req.data.action, comment: req.data.comment })
+        .where({ ID: req.data.request });
+      const updatedRequest = await SELECT.one
         .from(Requests)
         .where({ ID: req.data.request });
+      await messaging.emit("notifyManager", {
+        code: 200,
+        action: req.data.action,
+        data: updatedRequest,
+        authentication: req.data.authentication,
+      });
+      req.results = {
+        code: 200,
+        message: `You have ${req.data.action} request!`,
+        data: updatedRequest,
+      };
+    } catch (error) {
+      return _.error(500, error.message);
+    }
+  },
+  calculatingDayOff: async (req) => {
+    try {
+      const { data } = req;
+      const request = await SELECT.one
+        .from(Requests)
+        .where({ ID: data.request });
       if (!request) return req.reject(404, "Couldn't find this request");
       if (request.status !== "pending")
         return req.reject(400, `You have ${request.status} this request!!!`);
@@ -129,25 +161,10 @@ const managerHandler = {
               .where({ ID: user.ID });
         }
       }
-
-      await cds
-        .update(Requests)
-        .set({ status: req.data.action, comment: req.data.comment })
-        .where({ ID: req.data.request });
-      const updatedRequest = await SELECT.one
-        .from(Requests)
-        .where({ ID: req.data.request });
-      req.results = {
-        code: 200,
-        action: req.data.action,
-        data: updatedRequest,
-      };
     } catch (error) {
-      return req.reject(500, error.message);
+      return req.error(500, error.message);
     }
   },
-
-  createHoliday: async (req) => {},
 };
 
 const removeHolidays = async (offDays) => {
