@@ -5,10 +5,20 @@ const { Users, Requests } = cds.entities;
 const requestHandler = {
   create: async (req) => {
     try {
+      const messaging = await cds.connect.to("messaging");
       const startDay = new Date(req.data.startDay);
       const endDay = new Date(req.data.endDay);
       const currentDate = new Date();
 
+      const requests = await SELECT.from(Requests).where({
+        user_ID: req.data.authentication.id,
+        status: "pending",
+      });
+      if (requests)
+        return req.reject(
+          400,
+          "You already have a pending request, let the manager accept it first!!"
+        );
       if (startDay < currentDate || endDay < currentDate) {
         return req.reject(
           400,
@@ -18,28 +28,29 @@ const requestHandler = {
         return req.reject(400, "End day must be after start day.");
       }
 
-      const daysOff = getAllDaysBetween(startDay,endDay).length
+      const daysOff = getAllDaysBetween(startDay, endDay).length;
 
-      const user = await SELECT.one.from(Users).where({ID:req.data.authentication.id})
-      if (daysOff>(user.dayOffThisYear+user.dayOffLastYear)) {
+      const user = await SELECT.one
+        .from(Users)
+        .where({ ID: req.data.authentication.id });
+      if (daysOff > user.dayOffThisYear + user.dayOffLastYear) {
         await INSERT.into(Requests).entries({
           reason: req.data.reason,
           startDay: req.data.startDay,
           endDay: req.data.endDay,
-          isOutOfDay:true,
+          isOutOfDay: true,
           user_ID: req.data.authentication.id,
-        }); 
-      }
-      else {
+        });
+      } else {
         await INSERT.into(Requests).entries({
           reason: req.data.reason,
           startDay: req.data.startDay,
           endDay: req.data.endDay,
           user_ID: req.data.authentication.id,
         });
-      };
+      }
 
-      const data = await SELECT.one
+      const request = await SELECT.one
         .from(Requests)
         .where({
           reason: req.data.reason,
@@ -48,12 +59,18 @@ const requestHandler = {
           user_ID: req.data.authentication.id,
         })
         .orderBy("createdAt desc");
+      await messaging.emit("notify", {
+        code: 200,
+        action: "new",
+        data: request,
+        authentication: req.data.authentication,
+      });
+
       req.results = {
         code: 200,
         action: "new",
-        data: data,
+        data: request,
       };
-
     } catch (error) {
       req.error({
         code: error.code || 500,
@@ -74,11 +91,11 @@ const requestHandler = {
         return req.reject(403, "Cannot update request");
       }
       await cds
-      .update(Requests)
-      .set({ reason: req.data.reason})
-      .where({ ID: req.data.ID});
+        .update(Requests)
+        .set({ reason: req.data.reason })
+        .where({ ID: req.data.ID });
 
-    return req.info(200, `update successfully`);
+      return req.info(200, `update successfully`);
     } catch (error) {
       console.error("Error occurred during request update:", error);
       return req.reject(
@@ -117,18 +134,17 @@ const requestHandler = {
         let dayOffLastYear = user.dayOffLastYear;
         if (dayOffThisYear === 0) {
           dayOffLastYear = 0;
-          dayOffThisYear = 12 * 1.25;
-        } else if (dayOffThisYear > 0 && dayOffThisYear <= 5) {
-          dayOffLastYear = dayOffThisYear;
-          dayOffThisYear = 12 * 1.25;
-        } else if (dayOffThisYear > 5) {
-          dayOffLastYear = 5;
-          dayOffThisYear = 12 * 1.25;
         }
-        await UPDATE(Users)
-          .set({ dayOffThisYear, dayOffLastYear })
-          .where({ ID: user.ID });
+        if (dayOffThisYear > 5) {
+          dayOffLastYear = 5;
+        }
+        if (dayOffThisYear <= 5) {
+          dayOffLastYear = dayOffThisYear;
+        }
 
+        await UPDATE(Users)
+          .set({ dayOffThisYear: 1.25, dayOffLastYear: dayOffLastYear })
+          .where({ ID: user.ID });
       }
     } catch (error) {
       return { status: 500, message: error };
@@ -147,6 +163,20 @@ const requestHandler = {
   },
 };
 
+const dayOffNewMonth = async () => {
+  const users = await SELECT.from(Users);
+  for (const user of users) {
+    if (user.dayOffThisYear < 1) {
+      await UPDATE(Users).set({ dayOffThisYear: 1.25 }).where({ ID: user.ID });
+    }
+    if (user.dayOffThisYear > 1) {
+      await UPDATE(Users)
+        .set({ dayOffThisYear: { "+=": 1.25 } })
+        .where({ ID: user.ID });
+    }
+  }
+};
+
 const getAllDaysBetween = (startDay, endDay) => {
   const days = [];
   let currentDate = new Date(startDay);
@@ -163,14 +193,42 @@ const getAllDaysBetween = (startDay, endDay) => {
   return days;
 };
 
+const currentDay = new Date();
+
+const getDate = {
+  year: currentDay.getFullYear(),
+  month: currentDay.getMonth() + 1,
+  day: currentDay.getDate(),
+};
+
+const getLastDay = () => {
+  const lastDay = new Date(getDate.year, getDate.month, 0);
+  return lastDay.getDate();
+};
+
+const getMonth = () => {
+  const currentMonth = new Date().getMonth() + 1;
+  if (currentMonth === 12) {
+    return -1;
+  } else {
+    return currentMonth;
+  }
+};
+
+if (getLastDay() === getDate.day && getMonth() === getDate.month) {
+  cron.schedule(`59 23 ${getLastDay()} ${getMonth()} *`, async () => {
+    await dayOffNewMonth();
+    return req.info(200, "Vacation days renewed for the new month!");
+  });
+}
+cron.schedule("59 23 31 3 *", async () => {
+  await requestHandler.refreshDayOffLastYear();
+  return req.info(200, "refresh DayOffLastYear successfully.");
+});
 
 cron.schedule("59 23 31 12 *", async () => {
   await requestHandler.recalculateVacationDays();
-  return req.info(  200, "Vacation days recalculated successfully." );
-});
-cron.schedule("59 23 31 3 *", async () => {
-  await requestHandler.refreshDayOffLastYear();
-  return req.info(  200, "refresh DayOffLastYear successfully." );
+  return req.info(200, "Vacation days recalculated successfully.");
 });
 
 module.exports = requestHandler;

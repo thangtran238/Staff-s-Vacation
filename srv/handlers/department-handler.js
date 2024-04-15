@@ -26,7 +26,7 @@ const departmentHandler = {
 
       return req.info(201, "Create new department successfully!!!");
     } catch (error) {
-      return req.reject(500, error.message);
+      return req.error(500, error.message);
     }
   },
 
@@ -76,7 +76,7 @@ const departmentHandler = {
 
       return req.info(200, responseMessage.trim());
     } catch (error) {
-      return req.reject(500, error.message);
+      return req.error(500, error.message);
     }
   },
 };
