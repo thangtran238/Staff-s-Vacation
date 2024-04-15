@@ -1,8 +1,7 @@
 using vacation from '../db/schema';
 
 service ManagerService @(path: '/manage') {
-
-    entity Requests as projection on vacation.Requests;
+    
     function getRequest(request : String)                                       returns String;
     function getRequests()                                                      returns String;
     action   createDepartment(departmentName : String)                          returns String;

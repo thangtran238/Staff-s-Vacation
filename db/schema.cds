@@ -50,7 +50,7 @@ entity Notifications : cuid, managed {
     receivers : Association to many Users
                     on receivers.ID;
     message   : String;
-    read      : Boolean default 'false';
+    isRead    : Boolean default 'false';
     request   : Association to Requests
 
 }

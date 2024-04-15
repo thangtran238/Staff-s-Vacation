@@ -26,7 +26,7 @@ const requestHandler = {
           reason: req.data.reason,
           startDay: req.data.startDay,
           endDay: req.data.endDay,
-          isOutofDay:true,
+          isOutOfDay:true,
           user_ID: req.data.authentication.id,
         }); 
       }
@@ -160,7 +160,6 @@ const getAllDaysBetween = (startDay, endDay) => {
     const day = String(date.getDate()).padStart(2, "0");
     days.push(`${year}-${month}-${day}`);
   }
-  console.log(days);
   return days;
 };
 

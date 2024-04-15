@@ -54,93 +54,100 @@ const managerHandler = {
   },
 
   update: async (req) => {
-    const request = await SELECT.one
-      .from(Requests)
-      .where({ ID: req.data.request });
-    if (!request) return req.reject(404, "Couldn't find this request");
-    if (request.status !== "pending")
-      return req.reject(400, `You have ${request.status} this request!!!`);
-    const manager = await SELECT.one
-      .from(Users)
-      .where({ ID: req.data.authentication.id });
-    const user = await SELECT.one.from(Users).where({ ID: request.user_ID });
+    try {
+      const request = await SELECT.one
+        .from(Requests)
+        .where({ ID: req.data.request });
+      if (!request) return req.reject(404, "Couldn't find this request");
+      if (request.status !== "pending")
+        return req.reject(400, `You have ${request.status} this request!!!`);
+      const manager = await SELECT.one
+        .from(Users)
+        .where({ ID: req.data.authentication.id });
+      const user = await SELECT.one.from(Users).where({ ID: request.user_ID });
 
-    if (manager.department_id !== user.department_id)
-      return req.reject(402, "Your are not the manager of this request!!!");
+      if (manager.department_id !== user.department_id)
+        return req.reject(402, "Your are not the manager of this request!!!");
 
-    let endDay = new Date(request.endDay + "T23:59:59Z");
-    let startDay = new Date(request.startDay + "T00:00:00Z");
+      let endDay = new Date(request.endDay + "T23:59:59Z");
+      let startDay = new Date(request.startDay + "T00:00:00Z");
 
-    const removeWeekend = getAllDaysBetween(startDay, endDay);
-    const removeHoliday = await removeHolidays(removeWeekend);
+      const removeWeekend = getAllDaysBetween(startDay, endDay);
+      const removeHoliday = await removeHolidays(removeWeekend);
 
-    startDay = new Date(request.startDay + "T00:00:00Z");
-    endDay = new Date(request.endDay + "T23:59:59Z");
+      startDay = new Date(request.startDay + "T00:00:00Z");
+      endDay = new Date(request.endDay + "T23:59:59Z");
 
-    const startDayMonth = startDay.getMonth();
-    const endDayMonth = endDay.getMonth();
+      const startDayMonth = startDay.getMonth();
+      const endDayMonth = endDay.getMonth();
 
-    if (startDayMonth >= 3) user.dayOffLastYear = 0;
+      if (startDayMonth >= 3) user.dayOffLastYear = 0;
 
-    if (!user.dayOffLastYear) {
-      await UPDATE(Users)
-        .where({ ID: request.user_ID })
-        .set({
-          dayOffLastYear: 0,
-          dayOffThisYear: { "-=": removeHoliday.length },
-        });
-    } else {
-      if (startDayMonth < 3 && endDayMonth == 3) {
-        const { daysBeforeApril, daysAfterApril } = getDaysBeforeAfterApril(removeHoliday);
-        const newDayOffLastYear = user.dayOffLastYear - daysBeforeApril;
-        
+      if (!user.dayOffLastYear) {
         await UPDATE(Users)
-          .set({ dayOffThisYear: { "-=": daysAfterApril } })
-          .where({ ID: user.ID });
-
-        if (newDayOffLastYear >= 0)
-          await UPDATE(Users)
-            .set({ dayOffLastYear: newDayOffLastYear })
-            .where({ ID: user.ID });
-
-        if (newDayOffLastYear < 0)
-          await UPDATE(Users)
-            .set({
-              dayOffLastYear: 0,
-              dayOffThisYear: { "+=": newDayOffLastYear },
-            })
-            .where({ ID: user.ID });
+          .where({ ID: request.user_ID })
+          .set({
+            dayOffLastYear: 0,
+            dayOffThisYear: { "-=": removeHoliday.length },
+          });
       } else {
-        const newDayOffLastYear = user.dayOffLastYear - removeHoliday.length;
+        if (startDayMonth < 3 && endDayMonth == 3) {
+          const { daysBeforeApril, daysAfterApril } =
+            getDaysBeforeAfterApril(removeHoliday);
+          const newDayOffLastYear = user.dayOffLastYear - daysBeforeApril;
 
-        if (newDayOffLastYear >= 0)
           await UPDATE(Users)
-            .set({ dayOffLastYear: { "-=": removeHoliday.length } })
+            .set({ dayOffThisYear: { "-=": daysAfterApril } })
             .where({ ID: user.ID });
-        
-        if (newDayOffLastYear < 0)
-          await UPDATE(Users)
-            .set({
-              dayOffLastYear: 0,
-              dayOffThisYear: { "+=": newDayOffLastYear },
-            })
-            .where({ ID: user.ID });
+
+          if (newDayOffLastYear >= 0)
+            await UPDATE(Users)
+              .set({ dayOffLastYear: newDayOffLastYear })
+              .where({ ID: user.ID });
+
+          if (newDayOffLastYear < 0)
+            await UPDATE(Users)
+              .set({
+                dayOffLastYear: 0,
+                dayOffThisYear: { "+=": newDayOffLastYear },
+              })
+              .where({ ID: user.ID });
+        } else {
+          const newDayOffLastYear = user.dayOffLastYear - removeHoliday.length;
+
+          if (newDayOffLastYear >= 0)
+            await UPDATE(Users)
+              .set({ dayOffLastYear: { "-=": removeHoliday.length } })
+              .where({ ID: user.ID });
+
+          if (newDayOffLastYear < 0)
+            await UPDATE(Users)
+              .set({
+                dayOffLastYear: 0,
+                dayOffThisYear: { "+=": newDayOffLastYear },
+              })
+              .where({ ID: user.ID });
+        }
       }
-    }
 
-    await cds
-      .update(Requests)
-      .set({ status: req.data.action, comment: req.data.comment })
-      .where({ ID: req.data.request });
-    const updatedRequest = await SELECT.one
-      .from(Requests)
-      .where({ ID: req.data.request });
-    req.results = {
-      code: 200,
-      action: req.data.action,
-      data: updatedRequest,
-    };
+      await cds
+        .update(Requests)
+        .set({ status: req.data.action, comment: req.data.comment })
+        .where({ ID: req.data.request });
+      const updatedRequest = await SELECT.one
+        .from(Requests)
+        .where({ ID: req.data.request });
+      req.results = {
+        code: 200,
+        action: req.data.action,
+        data: updatedRequest,
+      };
+    } catch (error) {
+      return req.reject(500, error.message);
+    }
   },
+
+  createHoliday: async (req) => {},
 };
 
 const removeHolidays = async (offDays) => {
