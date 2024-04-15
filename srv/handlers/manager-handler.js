@@ -53,14 +53,57 @@ const managerHandler = {
     req.results = { code: 200, message: request };
   },
 
+  getRequestsForHr: async (req) => {
+    try {
+      const { nameStaff, date, department } = req.data;
+      let query = SELECT.from(Requests).columns((col) => {
+        col("ID"),
+          col("status"),
+          col("reason"),
+          col("startDay"),
+          col("endDay"),
+          col("modifiedAt"),
+          col.user((colUser) => {
+            colUser("ID"),
+              colUser("fname"),
+              colUser("address"),
+              colUser("department_id");
+          });
+      });
+
+      if (nameStaff === null && date === null && department === null) {
+        const requests = await query;
+        return {
+            code: 200,
+            data: requests
+        };
+    }
+      if (nameStaff && nameStaff !== null) {
+        query = query.where("user.fname", "=", nameStaff);
+      }
+      if (department && department !== null) {
+        query = query.where("user.department_id", "=", department);
+      }
+      if (date && date !== null) {
+        query = query.where("startDay", "<=", date).where("endDay", ">=", date);
+      }
+      const requests = await query;
+      return (req.results = {
+        code: 200,
+        data: requests,
+      });
+    } catch (err) {
+      req.error(500, err);
+    }
+  },
+
   update: async (req) => {
     const request = await SELECT.one
       .from(Requests)
       .where({ ID: req.data.request });
     if (!request) return req.reject(404, "Couldn't find this request");
     if (request.status !== "pending")
-      return req.
-    reject(400, `You have ${request.status} this request!!!`);
+      return req.reject(400, `You have ${request.status} this request!!!`);
     const manager = await SELECT.one
       .from(Users)
       .where({ ID: req.data.authentication.id });
@@ -83,40 +126,66 @@ const managerHandler = {
     if (startDayMonth >= 3) user.dayOffLastYear = 0;
 
     if (!user.dayOffLastYear) {
-      await UPDATE(Users).where({ ID: request.user_ID })
-            .set({ dayOffLastYear: 0, dayOffThisYear: { "-=": days } });
+      await UPDATE(Users)
+        .where({ ID: request.user_ID })
+        .set({ dayOffLastYear: 0, dayOffThisYear: { "-=": days } });
     } else {
       if (startDayMonth < 3 && endDayMonth == 3) {
-        const { daysBeforeApril, daysAfterApril } = getDaysBeforeAfterApril(startDay,endDay);
+        const { daysBeforeApril, daysAfterApril } = getDaysBeforeAfterApril(
+          startDay,
+          endDay
+        );
         const newDayOffLastYear = user.dayOffLastYear - daysBeforeApril;
-        
-          await UPDATE(Users).set({ dayOffThisYear: { "-=": daysAfterApril } }).where({ ID: user.ID });
-        
+
+        await UPDATE(Users)
+          .set({ dayOffThisYear: { "-=": daysAfterApril } })
+          .where({ ID: user.ID });
+
         if (newDayOffLastYear > 0)
-          await UPDATE(Users).set({ dayOffLastYear: newDayOffLastYear }).where({ ID: user.ID });
-        
-        if (newDayOffLastYear == 0) 
-          await UPDATE(Users).set({dayOffLastYear: newDayOffLastYear}).where({ ID: user.ID });
-        
-        if (newDayOffLastYear < 0) 
-          await UPDATE(Users).set({ dayOffLastYear: 0, dayOffThisYear: { "+=": newDayOffLastYear }}).where({ ID: user.ID });
-        
+          await UPDATE(Users)
+            .set({ dayOffLastYear: newDayOffLastYear })
+            .where({ ID: user.ID });
+
+        if (newDayOffLastYear == 0)
+          await UPDATE(Users)
+            .set({ dayOffLastYear: newDayOffLastYear })
+            .where({ ID: user.ID });
+
+        if (newDayOffLastYear < 0)
+          await UPDATE(Users)
+            .set({
+              dayOffLastYear: 0,
+              dayOffThisYear: { "+=": newDayOffLastYear },
+            })
+            .where({ ID: user.ID });
       } else {
         const newDayOffLastYear = user.dayOffLastYear - days;
 
         if (newDayOffLastYear > 0)
-          await UPDATE(Users).set({dayOffLastYear: { "-=": days }}).where({ ID: user.ID });
+          await UPDATE(Users)
+            .set({ dayOffLastYear: { "-=": days } })
+            .where({ ID: user.ID });
         if (newDayOffLastYear == 0)
-          await UPDATE(Users).set({dayOffLastYear: { "-=": days }}).where({ ID: user.ID });
+          await UPDATE(Users)
+            .set({ dayOffLastYear: { "-=": days } })
+            .where({ ID: user.ID });
         if (newDayOffLastYear < 0)
-          await UPDATE(Users).set({dayOffLastYear: 0,dayOffThisYear: { "+=": newDayOffLastYear },}).where({ ID: user.ID });
+          await UPDATE(Users)
+            .set({
+              dayOffLastYear: 0,
+              dayOffThisYear: { "+=": newDayOffLastYear },
+            })
+            .where({ ID: user.ID });
       }
     }
 
-    await cds.update(Requests)
-            .set({ status: req.data.action, comment: req.data.comment })
-            .where({ ID: req.data.request });
-    const updatedRequest = await SELECT.one.from(Requests).where({ ID: req.data.request });
+    await cds
+      .update(Requests)
+      .set({ status: req.data.action, comment: req.data.comment })
+      .where({ ID: req.data.request });
+    const updatedRequest = await SELECT.one
+      .from(Requests)
+      .where({ ID: req.data.request });
     req.results = {
       code: 200,
       action: req.data.action,
@@ -138,11 +207,11 @@ const getAllDaysBetween = (startDay, endDay) => {
     const day = String(date.getDate()).padStart(2, "0");
     days.push(`${year}-${month}-${day}`);
   }
-  
-  const weekDays = days.filter(day => {
+
+  const weekDays = days.filter((day) => {
     const date = new Date(day);
     const dayOfWeek = date.getDay();
-    return dayOfWeek !== 0 && dayOfWeek !== 6; 
+    return dayOfWeek !== 0 && dayOfWeek !== 6;
   });
 
   return weekDays;

@@ -3,7 +3,9 @@ const {
   update,
   getRequests,
   getRequest,
+  getRequestsForHr,
 } = require("./handlers/manager-handler");
+const { Users, Requests } = cds.entities;
 const { sending } = require("./handlers/notify-handler");
 const { managerAuthorization } = require("./middlewares/guard");
 
@@ -15,4 +17,5 @@ module.exports = async (srv) => {
   srv.on("inviteMember", invite);
   srv.on("updateRequest", update);
   srv.after("updateRequest", sending);
+  srv.on("getRequestsForHr", getRequestsForHr);
 };
