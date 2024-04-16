@@ -1,6 +1,6 @@
-username, password, fname, address, role, department_id,dayOffThisYear
-teri.vo,123123,Tam Vo,199 Dong Da, manager, 1,0
-royce.pham,123123, Nhan Pham, 199 Dong Da, staff, 1,0
-zef.tran,123123,Thang Tran,199 Dong Da, staff, 1,0
-cary.vo,123123,Ha Vo,199 Dong Da, staff,2,0
-rebeca.phan,123123,Thu Phan,199 Dong Da, manager, 2,0
+username, password, fullName, address, role, department_id
+teri.vo,123123,Tam Vo,199 Dong Da, manager, 1
+royce.pham,123123, Manh Pham, 199 Dong Da, staff, 1
+zef.tran,123123,Thang Tran,199 Dong Da, staff, 1
+cary.vo,123123,Ha Vo,199 Dong Da, staff,2
+rebeca.phan,123123,Thu Phan,199 Dong Da, manager, 2

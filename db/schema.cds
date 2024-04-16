@@ -16,15 +16,16 @@ type Status : String enum {
     rejected;
 }
 
+@assert.unique: {username: [username]}
 entity Users : cuid, managed {
     username       : String;
     password       : String;
-    fname          : String;
+    fullName       : String;
     isActive       : Boolean default true;
     address        : String;
     role           : Role default 'staff';
     refreshToken   : String;
-    dayOffThisYear : Decimal(10, 2) default 0;
+    dayOffThisYear : Decimal(10, 2) default 1.25;
     dayOffLastYear : Decimal(10, 2) default 0;
     requests       : Association to many Requests
                          on requests.user = $self;
@@ -37,7 +38,7 @@ entity Requests : cuid, managed {
     user         : Association to Users;
     startDay     : Date;
     endDay       : Date;
-    isOutOfDay   : Boolean default 'false';
+    isOutOfDay   : Boolean default false;
     comment      : String default '';
     notification : Association to Notifications
                        on notification.request = $self;
@@ -45,20 +46,19 @@ entity Requests : cuid, managed {
 
 
 entity Notifications : cuid, managed {
-    sender    : Association to Users
-                    on sender.ID;
-    receivers : Association to many Users
-                    on receivers.ID;
-    message   : String;
-    read      : Boolean default 'false';
-    request   : Association to Requests
+    sender   : Association to Users;
+    receiver : Association to Users;
+    message  : String;
+    isRead   : Boolean default false;
+    request  : Association to Requests
 
 }
 
 entity Departments : managed {
     key id             : Integer;
         departmentName : String;
-        isHRDepartment : Boolean default 'false';
+        isHRDepartment : Boolean default false;
+        isActive       : Boolean default false;
         members        : Association to many Users
                              on members.department = $self;
 

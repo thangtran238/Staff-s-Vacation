@@ -2,41 +2,32 @@ const cds = require("@sap/cds");
 const { Users, Notifications } = cds.entities;
 
 const notifyHandler = {
-  sending: async (res, req) => {
-    const { data } = req;
-    const getUser = await SELECT.one
-      .from(Users)
-      .where({ ID: res.data.user_ID });
+  sending: async (req) => {
+    const { data, action } = req.data;
 
+    const getUser = await SELECT.one.from(Users).where({ ID: data.user_ID });
     const getManager = await SELECT.one
       .from(Users)
       .where({ department_id: getUser.department_id, role: "manager" });
     let notify;
-    if (res.action === "accepted" || res.action === "rejected") {
-      notify = responseMessage(getManager.fname, res.action, "");
+    if (action === "accepted" || action === "rejected") {
+      notify = responseMessage(getManager.fullName, action, "");
+      await INSERT.into(Notifications).entries({
+        sender_ID: req.data.authentication.id,
+        receiver_ID: getUser.ID,
+        message: notify,
+        request_ID: data.ID,
+      });
     }
-    if (
-      res.action === "new" ||
-      res.action === "update" ||
-      res.action === "delete"
-    ) {
-      notify = responseMessage(getUser.fname, res.action, res.data.reason);
+    if (action === "new" || action === "update" || action === "delete") {
+      notify = responseMessage(getUser.fullName, action, data.reason);
+      await INSERT.into(Notifications).entries({
+        sender_ID: req.data.authentication.id,
+        receiver_ID: getManager.ID,
+        message: notify,
+        request_ID: data.ID,
+      });
     }
-
-    const newNotification = await INSERT.into(Notifications).entries({
-      sender: data.authentication.id,
-      receivers: getManager.ID,
-      message: notify,
-      request_ID : res.data.ID
-    });
-
-    if (!newNotification)
-      return req.reject(400, "Something wrong in sending notification!");
-    req.results = {
-      code: 200,
-      message: "New notification has been sent",
-      data: res.data,
-    };
   },
 
   getNotification: async (res, req) => {
@@ -49,7 +40,20 @@ const notifyHandler = {
     req.results = notification;
   },
 
-  flaggedNotification: async (req) => {},
+  flaggedNotification: async (req) => {
+    try {
+      const { data } = req;
+      await UPDATE(Notifications)
+        .set({
+          isRead: true,
+        })
+        .where({
+          ID: data.ID,
+        });
+    } catch (error) {
+      return req.reject(500, error.message);
+    }
+  },
 };
 
 const responseMessage = (name, action, reason) => {

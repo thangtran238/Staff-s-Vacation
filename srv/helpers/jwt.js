@@ -12,7 +12,7 @@ const generateAccessToken = (user) => {
       role: user.role,
     },
     accessTokenKey,
-    { expiresIn: "2h" }
+    { expiresIn: "30m" }
   );
 };
 
@@ -23,31 +23,32 @@ const generateRefreshToken = (user) => {
       role: user.role,
     },
     refreshTokenKey,
-    { expiresIn: "1h" }
+    { expiresIn: "30d" }
   );
 };
 
 const verifyAccessToken = (token) => {
+  const accessToken = token.split(" ")[1];
+  if (!accessToken) return;
   try {
-    const accessToken = token.split(" ")[1];
-    if (!accessToken) return;
-    const decoded = jwt.verify(accessToken, process.env.ACCESS_TOKEN);
+    const decoded = jwt.verify(accessToken, accessTokenKey);
     return decoded;
   } catch (err) {
-    return;
+    const decoded = jwt.decode(accessToken);
+    return {
+      id: decoded.id,
+    };
   }
 };
 
 const verifyRefreshToken = (token) => {
   try {
-    const secret = refreshTokenKey;
-    const decoded = jwt.verify(token, secret);
+    const decoded = jwt.verify(token, refreshTokenKey);
     return decoded;
   } catch (err) {
-    console.log(err);
-
+    const decoded = jwt.decode(token);
     return {
-      expired: true,
+      id: decoded.id,
     };
   }
 };

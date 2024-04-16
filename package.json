@@ -27,6 +27,9 @@
         "credentials": {
           "url": "vacation.db"
         }
+      },
+      "messaging": {
+        "[development]": { "kind": "file-based-messaging" }
       }
     }
   }
