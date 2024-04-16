@@ -16,9 +16,9 @@ type Status : String enum {
     rejected;
 }
 
-
+@assert.unique: {username: [username]}
 entity Users : cuid, managed {
-    username       : String  @mandatory  @assert.unique;
+    username       : String;
     password       : String;
     fullName       : String;
     isActive       : Boolean default true;
@@ -46,13 +46,11 @@ entity Requests : cuid, managed {
 
 
 entity Notifications : cuid, managed {
-    sender    : Association to Users;
-    
+    sender   : Association to Users;
     receiver : Association to Users;
-                
-    message   : String;
-    isRead    : Boolean default false;
-    request   : Association to Requests
+    message  : String;
+    isRead   : Boolean default false;
+    request  : Association to Requests
 
 }
 
@@ -60,6 +58,7 @@ entity Departments : managed {
     key id             : Integer;
         departmentName : String;
         isHRDepartment : Boolean default false;
+        isActive       : Boolean default false;
         members        : Association to many Users
                              on members.department = $self;
 

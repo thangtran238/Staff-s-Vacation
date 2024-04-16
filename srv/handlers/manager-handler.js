@@ -84,6 +84,9 @@ const managerHandler = {
       return _.error(500, error.message);
     }
   },
+
+
+  
   calculatingDayOff: async (req) => {
     try {
       const { data } = req;
