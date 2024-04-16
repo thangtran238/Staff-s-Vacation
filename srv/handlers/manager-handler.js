@@ -57,6 +57,7 @@ const managerHandler = {
     req.results = { code: 200, message: request };
   },
 
+
   update: async (_, req) => {
     try {
       const messaging = await cds.connect.to("messaging");
@@ -167,8 +168,55 @@ const managerHandler = {
     } catch (error) {
       return req.error(500, error.message);
     }
+
   },
 };
+        
+  getRequestsForHr: async (req) => {
+    try {
+      const { nameStaff, date, department } = req.data;
+      let query = SELECT.from(Requests).columns((col) => {
+        col("ID"),
+          col("status"),
+          col("reason"),
+          col("startDay"),
+          col("endDay"),
+          col("modifiedAt"),
+          col.user((colUser) => {
+            colUser("ID"),
+              colUser("fname"),
+              colUser("address"),
+              colUser("department_id");
+          });
+      });
+
+      if (nameStaff === null && date === null && department === null) {
+        const requests = await query;
+        return {
+            code: 200,
+            data: requests
+        };
+    }
+      if (nameStaff && nameStaff !== null) {
+        query = query.where("user.fname", "=", nameStaff);
+      }
+      if (department && department !== null) {
+        query = query.where("user.department_id", "=", department);
+      }
+      if (date && date !== null) {
+        query = query.where("startDay", "<=", date).where("endDay", ">=", date);
+      }
+      const requests = await query;
+      return (req.results = {
+        code: 200,
+        data: requests,
+      });
+    } catch (err) {
+      req.error(500, err);
+    }
+  },
+
+
 
 const removeHolidays = async (offDays) => {
   const getHoliday = await SELECT.from(Calendar).where({
@@ -202,6 +250,7 @@ const getAllDaysBetween = (startDay, endDay) => {
     const day = String(date.getDate()).padStart(2, "0");
     days.push(`${year}-${month}-${day}`);
   }
+
   const weekDays = days.filter((day) => {
     const date = new Date(day);
     const dayOfWeek = date.getDay();

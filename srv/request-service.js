@@ -12,3 +12,4 @@ module.exports = async (srv) => {
   const messaging = await cds.connect.to("messaging");
   messaging.on("notify", sending);
 };
+  
