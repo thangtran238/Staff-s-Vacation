@@ -1,6 +1,11 @@
 const cds = require("@sap/cds");
 const bcrypt = require("bcryptjs");
-const { generateAccessToken, generateRefreshToken } = require("../helpers/jwt");
+const {
+  generateAccessToken,
+  generateRefreshToken,
+  verifyAccessToken,
+  verifyRefreshToken,
+} = require("../helpers/jwt");
 
 const { Users } = cds.entities;
 
@@ -59,25 +64,41 @@ const authHandler = {
           "Failed to retrieve user information after signup."
         );
       }
-      await calculateVacationDays(newUser.ID);
-      return req.info(200, "Welcome to the system!");
+      req.results = {
+        code: 201,
+        message: "Welcome to the system!",
+      };
     } catch (error) {
       req.reject(500, error.message);
     }
   },
-};
+  refresh: async (req) => {
+    const decodedAccessToken = verifyAccessToken(req.headers.authorization);
+    if (decodedAccessToken.exp)
+      return req.reject(400, "This access token is useable");
 
-const calculateVacationDays = async (user_id) => {
-  try {
-    const user = await SELECT.one.from(Users).where({ ID: user_id });
-    const createdAt = new Date(user.createdAt);
-    const currentYear = new Date().getFullYear();
-    if (createdAt.getFullYear() === currentYear) {
-      await UPDATE(Users).set({ dayOffThisYear: 1.25 }).where({ ID: user_id });
-    }
-  } catch (error) {
-    return { code: 500, message: error.message || "Internal Server Error" };
-  }
+    const user = await SELECT.one
+      .from(Users)
+      .where({ ID: decodedAccessToken.id });
+    console.log(user);
+    if (!user) return req.reject(404, "Couldn't find this user!");
+
+    const decodedRefreshToken = verifyRefreshToken(user.refreshToken);
+    console.log(decodedRefreshToken);
+
+    if (!decodedRefreshToken.exp)
+      return req.reject(300, "Your token is on expiry, try login again!!");
+
+    const newAccessToken = generateAccessToken(user);
+
+    if (!newAccessToken)
+      return req.reject(500, "Cannot create new access token!");
+
+    req.results = {
+      code: 200,
+      data: newAccessToken,
+    };
+  },
 };
 
 module.exports = authHandler;

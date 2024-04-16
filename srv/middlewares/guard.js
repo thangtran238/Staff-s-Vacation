@@ -6,7 +6,7 @@ const { Users } = cds.entities;
 const guard = {
   authentication: async (req) => {
     const decoded = verifyAccessToken(req.headers.authorization);
-    if (!decoded) return req.reject(402, "Your token is expired");
+    if (!decoded.exp) return req.reject(402, "Your token is expired");
     const tx = cds.transaction(req);
 
     const user = await tx.run(SELECT.from(Users).where({ ID: decoded.id }));

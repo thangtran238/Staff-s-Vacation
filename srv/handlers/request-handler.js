@@ -14,7 +14,7 @@ const requestHandler = {
         user_ID: req.data.authentication.id,
         status: "pending",
       });
-      if (requests)
+      if (requests.length > 0)
         return req.reject(
           400,
           "You already have a pending request, let the manager accept it first!!"
