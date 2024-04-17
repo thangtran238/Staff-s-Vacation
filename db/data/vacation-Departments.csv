@@ -1,0 +1,4 @@
+id,departmentName, isHRDepartment
+1,"IT Department", false
+2,"Human Resource", true
+3,"Marketing", false

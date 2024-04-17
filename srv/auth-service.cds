@@ -1,12 +1,22 @@
 using vacation from '../db/schema';
 
-type Token {
-    id   : UUID;
-    role : String; //staff, manager
-}
 
 service AuthService @(path: '/auth') {
-    entity Users as projection on vacation.Users;
-    function login(username : String, password : String) returns String;
-    action   token(user : Users)                         returns Token;
+
+    @readonly
+    entity Users as
+        projection on vacation.Users
+        excluding {
+            password,
+            createdBy,
+            createdAt,
+            modifiedBy,
+            modifiedAt,
+            refreshToken
+        };
+
+    action   login(username : String, password : String)                                                   returns String;
+    action   signup(username : String, password : String, fname : String, address : String, role : String) returns String;
+    function refresh()                                                                                     returns String;
+    function logout()                                                                                      returns String;
 }
