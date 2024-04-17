@@ -4,7 +4,6 @@ const { SELECT, UPDATE, INSERT } = cds.ql;
 const { Users, Requests } = cds.entities;
 const requestHandler = {
   create: async (req) => {
-    try {
       const messaging = await cds.connect.to("messaging");
       const startDay = new Date(req.data.startDay);
       const endDay = new Date(req.data.endDay);
@@ -71,12 +70,6 @@ const requestHandler = {
         action: "new",
         data: request,
       };
-    } catch (error) {
-      req.error({
-        code: error.code || 500,
-        message: error.message || "Internal Server Error",
-      });
-    }
   },
 
   update: async (req) => {

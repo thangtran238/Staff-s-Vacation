@@ -29,9 +29,11 @@ const generateRefreshToken = (user) => {
 };
 
 const verifyAccessToken = (token) => {
+  if (!token) return;
   const accessToken = token.split(" ")[1];
   if (!accessToken) return;
   try {
+ 
     const decoded = jwt.verify(accessToken, accessTokenKey);
     return decoded;
   } catch (err) {
