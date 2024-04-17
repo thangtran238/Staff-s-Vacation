@@ -1,5 +1,4 @@
 const cds = require("@sap/cds");
-const { authentication } = require("../middlewares/guard");
 
 const { Calendar, Users, Requests } = cds.entities;
 const managerHandler = {
@@ -172,49 +171,7 @@ const managerHandler = {
   },
 };
         
-  getRequestsForHr: async (req) => {
-    try {
-      const { nameStaff, date, department } = req.data;
-      let query = SELECT.from(Requests).columns((col) => {
-        col("ID"),
-          col("status"),
-          col("reason"),
-          col("startDay"),
-          col("endDay"),
-          col("modifiedAt"),
-          col.user((colUser) => {
-            colUser("ID"),
-              colUser("fname"),
-              colUser("address"),
-              colUser("department_id");
-          });
-      });
-
-      if (nameStaff === null && date === null && department === null) {
-        const requests = await query;
-        return {
-            code: 200,
-            data: requests
-        };
-    }
-      if (nameStaff && nameStaff !== null) {
-        query = query.where("user.fname", "=", nameStaff);
-      }
-      if (department && department !== null) {
-        query = query.where("user.department_id", "=", department);
-      }
-      if (date && date !== null) {
-        query = query.where("startDay", "<=", date).where("endDay", ">=", date);
-      }
-      const requests = await query;
-      return (req.results = {
-        code: 200,
-        data: requests,
-      });
-    } catch (err) {
-      req.error(500, err);
-    }
-  },
+ 
 
 
 
