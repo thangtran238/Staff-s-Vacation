@@ -18,7 +18,7 @@ module.exports = async (srv) => {
   srv.on("updateRequest", calculatingDayOff);
   srv.after("updateRequest", update);
   srv.after("READ", "Notifications", flaggedNotification);
-   srv.on("getRequestsForHr", getRequestsForHr);
+  srv.on("getRequestsForHr", getRequestsForHr);
   const messaging = await cds.connect.to("messaging");
   messaging.on("notifyManager", sending);
 };

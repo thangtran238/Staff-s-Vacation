@@ -1,5 +1,6 @@
 const cds = require("@sap/cds");
-
+const excelJS = require("exceljs");
+const cron = require("node-cron");
 const { Calendar, Users, Requests } = cds.entities;
 const managerHandler = {
   getRequests: async (req) => {
@@ -165,6 +166,119 @@ const managerHandler = {
     }
 
   },
+
+       
+  getRequestsForHr: async (req) => {
+    try {
+      const { nameStaff, date, department } = req.data;
+      let query = SELECT.from(Requests).columns((col) => {
+        col("ID"),
+          col("status"),
+          col("reason"),
+          col("startDay"),
+          col("endDay"),
+          col("modifiedAt"),
+          col.user((colUser) => {
+            colUser("ID"),
+              colUser("fullName"),
+              colUser("address"),
+              colUser("department_id");
+          });
+      });
+
+      if (nameStaff === null && date === null && department === null) {
+        const requests = await query;
+        return {
+            code: 200,
+            data: requests
+        };
+    }
+      if (nameStaff && nameStaff !== null) {
+        query = query.where("user.fullName ", "=", nameStaff);
+      }
+      if (department && department !== null) {
+        query = query.where("user.department_id", "=", department);
+      }
+      if (date && date !== null) {
+        query = query.where("startDay", "<=", date).where("endDay", ">=", date);
+      }
+      const requests = await query;
+      return (req.results = {
+        code: 200,
+        data: requests,
+      });
+    } catch (err) {
+      req.error(500, err);
+    }
+  },
+
+  exportReport: async () => {
+    // const filePath = "C://Users//teri.vo//Documents//Excel_Report//users.xlsx";
+    // const workbook = new excelJS.Workbook();
+    // const worksheet = workbook.addWorksheet("Users");
+
+    // worksheet.columns = [
+    //     { header: "ID", key: "ID", width: 15 },
+    //     { header: "FullName", key: "fname", width: 15 },
+    //     { header: "Address", key: "address", width: 25 },
+    //     { header: "Role", key: "role", width: 10 },
+    //     { header: "Remaining DaysOff", key: "rd", width: 10 },
+    //     { header: "DaysOff Taken", key: "dt", width: 10 },
+
+    // ];
+    const currentDate = new Date(); 
+    const firstDayOfMonth = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      1
+    );
+    const lastDayOfMonth = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth() + 1,
+      0
+    );
+    const allUsers = await SELECT.from(Users).where({ isActive: true });
+    console.log(allUsers);
+    allUsers.forEach(async  (user) => {
+      const remainingDaysOff = user.dayOffThisYear + user.dayOffLastYear;
+      user.RemainingDaysOff = remainingDaysOff;
+      const userRequestsThisMonth = await SELECT.from(Requests).where({
+        user_ID: user.ID,
+        or:[
+           
+        ],
+        status: "accepted",
+      }); 
+      console.log(userRequestsThisMonth);
+      let days = [];
+      userRequestsThisMonth.forEach(async (request) => {
+        const removeWeekend = getAllDaysBetween(request.startDay,request.endDay);
+        const removeHoliday = await removeHolidays(removeWeekend);
+        days.push(...removeHoliday);
+      });
+      days = days.filter(day => {
+        const date = new Date(day);
+        return date.getMonth() === currentDate.getMonth();
+      });
+      console.log(days);
+    });
+
+    
+    // User.forEach(user => {
+    //     worksheet.addRow({
+    //         fname: user.fname,
+    //         lname: user.lname,
+    //         email: user.email,
+    //         gender: user.gender
+    //     });
+    // });
+
+    // await workbook.xlsx.writeFile(filePath);
+    // console.log("Tệp Excel đã được tạo thành công");
+
+    // return filePath;
+  },
+
 };
         
  
@@ -232,4 +346,13 @@ const getDaysBeforeAfterApril = (offDays) => {
   return { daysBeforeApril, daysAfterApril };
 };
 
+
+cron.schedule("* * * * *", async () => { 
+  try {
+    await managerHandler.exportReport();
+      
+  } catch (error) {
+      console.error( error);
+  }
+});
 module.exports = managerHandler;
