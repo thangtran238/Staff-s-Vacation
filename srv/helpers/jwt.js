@@ -13,6 +13,7 @@ const generateAccessToken = (user) => {
     },
     accessTokenKey,
     { expiresIn: "30m" }
+
   );
 };
 
@@ -40,7 +41,6 @@ const verifyAccessToken = (token) => {
     };
   }
 };
-
 const verifyRefreshToken = (token) => {
   try {
     const decoded = jwt.verify(token, refreshTokenKey);
