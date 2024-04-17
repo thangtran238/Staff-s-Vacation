@@ -6,7 +6,6 @@ const {
   verifyAccessToken,
   verifyRefreshToken,
 } = require("../helpers/jwt");
-
 const { Users } = cds.entities;
 
 const authHandler = {
@@ -64,11 +63,11 @@ const authHandler = {
           "Failed to retrieve user information after signup."
         );
       }
+      await calculateVacationDays(newUser.ID);
       req.results = {
         code: 201,
         message: "Welcome to the system!",
-      };
-    } catch (error) {
+      };    } catch (error) {
       req.reject(500, error.message);
     }
   },
@@ -99,6 +98,22 @@ const authHandler = {
       data: newAccessToken,
     };
   },
+};
+
+const calculateVacationDays = async (user_id) => {
+  try {
+    const user = await SELECT.one.from(Users).where({ ID: user_id });
+    const createdAt = new Date(user.createdAt);
+    const currentYear = new Date().getFullYear();
+    if (createdAt.getFullYear() === currentYear) {
+      const endOfYear = new Date(currentYear, 11, 31);
+      const monthsPassed = endOfYear.getMonth() - createdAt.getMonth();
+      const dayOffThisYear = monthsPassed * 1.25;
+      await UPDATE(Users).set({ dayOffThisYear: dayOffThisYear }).where({ ID: user_id });
+    }
+  } catch (error) {
+    return { code: 500, message: error.message || "Internal Server Error" };
+  }
 };
 
 module.exports = authHandler;

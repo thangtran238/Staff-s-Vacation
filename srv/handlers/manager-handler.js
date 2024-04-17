@@ -1,5 +1,4 @@
 const cds = require("@sap/cds");
-const { authentication } = require("../middlewares/guard");
 
 const { Calendar, Users, Requests } = cds.entities;
 const managerHandler = {
@@ -61,7 +60,6 @@ const managerHandler = {
     try {
       const messaging = await cds.connect.to("messaging");
 
-      const { data } = req;
       await cds
         .update(Requests)
         .set({ status: req.data.action, comment: req.data.comment })
@@ -84,9 +82,6 @@ const managerHandler = {
       return _.error(500, error.message);
     }
   },
-
-
-  
   calculatingDayOff: async (req) => {
     try {
       const { data } = req;

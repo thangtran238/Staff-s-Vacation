@@ -15,10 +15,10 @@ File or Folder | Purpose
 
 ## Next Steps
 
-- Open a new terminal and run `npm i` and then `cds watch`.
-- Add a database by run `cds deploy`, to watch the database in sql query, run `cds compile db/schema.cds -2 sql`
+- Open a new terminal and run `cds watch`
 - (in VS Code simply choose _**Terminal** > Run Task > cds watch_)
 - Start adding content, for example, a [db/schema.cds](db/schema.cds).
+
 
 ## Learn More
 
