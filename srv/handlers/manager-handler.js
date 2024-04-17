@@ -21,41 +21,14 @@ const managerHandler = {
               colUser("department_id");
           });
       })
-      .where("user.department_id", "=", manager.department_id);
+      .where("user.department_id", "=", manager.department_id)
+      .and(req.data.request ? {ID: req.data.request} : "");
 
     if (requests.length === 0) {
       return req.info(202, "There aren't any request yet!");
     }
     return (req.results = { code: 200, message: requests });
   },
-
-  getRequest: async (req) => {
-    const manager = await SELECT.one.from(Users).where({
-      ID: req.data.authentication.id,
-    });
-
-    const request = await SELECT.one
-      .from(Requests)
-      .columns((col) => {
-        col("ID"),
-          col("status"),
-          col("reason"),
-          col("startDay"),
-          col("endDay"),
-          col.user((colUser) => {
-            colUser("ID"),
-              colUser("fullName"),
-              colUser("address"),
-              colUser("department_id");
-          });
-      })
-      .where("user.department_id", "=", manager.department_id)
-      .and({ ID: req.data.request });
-    if (!request)
-      return req.info(300, "There's something wrong, try again later!");
-    req.results = { code: 200, message: request };
-  },
-
 
   update: async (_, req) => {
     try {

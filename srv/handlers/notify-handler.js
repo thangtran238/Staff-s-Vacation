@@ -30,28 +30,40 @@ const notifyHandler = {
     }
   },
 
-  getNotification: async (res, req) => {
-    const notification = res.filter(
-      (notify) => notify.receiver === req.data.authentication.id
-    );
+  getNotifications: async (req) => {
+    const notifications = await SELECT.from(Notifications)
+      .where({
+        receiver_ID: req.data.authentication.id,
+      })
+      .and(req.data.notify ? { ID: req.data.notify } : "");
 
-    if (!notification) return req.reject(404, "Nothing to show here!!");
+    if (!notifications) return req.reject(404, "Nothing to show here!!");
 
-    req.results = notification;
+    req.results = {
+      code: 200,
+      data: notifications,
+    };
   },
 
-  flaggedNotification: async (req) => {
-    try {
-      const { data } = req;
+  flaggedNotification: async (res, req) => {
+    const { data } = req;
+    if (data.notify) {
       await UPDATE(Notifications)
         .set({
           isRead: true,
         })
         .where({
-          ID: data.ID,
+          ID: data.notify,
+          receiver_ID: req.data.authentication.id,
         });
-    } catch (error) {
-      return req.reject(500, error.message);
+
+      const notify = await SELECT.from(Notifications).where({
+        ID: data.notify,
+      });
+      return (req.results = {
+        code: 200,
+        data: notify,
+      });
     }
   },
 };
