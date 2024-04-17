@@ -57,7 +57,6 @@ const managerHandler = {
     req.results = { code: 200, message: request };
   },
 
-
   update: async (_, req) => {
     try {
       const messaging = await cds.connect.to("messaging");
@@ -164,10 +163,8 @@ const managerHandler = {
     } catch (error) {
       return req.error(500, error.message);
     }
-
   },
 
-       
   getRequestsForHr: async (req) => {
     try {
       const { nameStaff, date, department } = req.data;
@@ -189,10 +186,10 @@ const managerHandler = {
       if (nameStaff === null && date === null && department === null) {
         const requests = await query;
         return {
-            code: 200,
-            data: requests
+          code: 200,
+          data: requests,
         };
-    }
+      }
       if (nameStaff && nameStaff !== null) {
         query = query.where("user.fullName ", "=", nameStaff);
       }
@@ -213,75 +210,77 @@ const managerHandler = {
   },
 
   exportReport: async () => {
-    // const filePath = "C://Users//teri.vo//Documents//Excel_Report//users.xlsx";
-    // const workbook = new excelJS.Workbook();
-    // const worksheet = workbook.addWorksheet("Users");
+    const today = new Date();
+    const currentMonth = today.getMonth() + 1;
+    const currentYear = today.getFullYear();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
-    // worksheet.columns = [
-    //     { header: "ID", key: "ID", width: 15 },
-    //     { header: "FullName", key: "fname", width: 15 },
-    //     { header: "Address", key: "address", width: 25 },
-    //     { header: "Role", key: "role", width: 10 },
-    //     { header: "Remaining DaysOff", key: "rd", width: 10 },
-    //     { header: "DaysOff Taken", key: "dt", width: 10 },
+    const filePath =`C://Users//teri.vo//Documents//Excel_Report//Report_${currentMonth}_${currentYear}.xlsx`;
+    const workbook = new excelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Users");
 
-    // ];
-    const currentDate = new Date(); 
-    const firstDayOfMonth = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth(),
-      1
-    );
-    const lastDayOfMonth = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth() + 1,
-      0
-    );
-    const allUsers = await SELECT.from(Users).where({ isActive: true });
-    console.log(allUsers);
-    allUsers.forEach(async  (user) => {
-      const remainingDaysOff = user.dayOffThisYear + user.dayOffLastYear;
-      user.RemainingDaysOff = remainingDaysOff;
-      const userRequestsThisMonth = await SELECT.from(Requests).where({
-        user_ID: user.ID,
-        or:[
-           
-        ],
-        status: "accepted",
-      }); 
-      console.log(userRequestsThisMonth);
-      let days = [];
-      userRequestsThisMonth.forEach(async (request) => {
-        const removeWeekend = getAllDaysBetween(request.startDay,request.endDay);
-        const removeHoliday = await removeHolidays(removeWeekend);
-        days.push(...removeHoliday);
-      });
-      days = days.filter(day => {
-        const date = new Date(day);
-        return date.getMonth() === currentDate.getMonth();
-      });
-      console.log(days);
-    });
+    worksheet.columns = [
+      { header: "ID", key: "ID", width: 15 },
+      { header: "FullName", key: "fname", width: 15 },
+      { header: "Address", key: "address", width: 25 },
+      { header: "Role", key: "role", width: 10 },
+      { header: "Remaining DaysOff", key: "RemainingDaysOff", width: 10 },
+      { header: "DaysOff Taken", key: "DaysOffTaken", width: 10 },
+      { header: "List DayOff", key: "ListDayOff", width: 10 },
+    ];
 
-    
-    // User.forEach(user => {
-    //     worksheet.addRow({
-    //         fname: user.fname,
-    //         lname: user.lname,
-    //         email: user.email,
-    //         gender: user.gender
-    //     });
-    // });
-
-    // await workbook.xlsx.writeFile(filePath);
-    // console.log("Tệp Excel đã được tạo thành công");
-
-    // return filePath;
-  },
-
-};
-        
  
+   
+
+    const allUsers = await SELECT.from(Users).where({ isActive: true });
+
+    for (const user of allUsers) {
+        const remainingDaysOff = user.dayOffThisYear + user.dayOffLastYear;
+        const userRequestsThisMonth = await SELECT.from(Requests).where({
+            user_ID: user.ID,
+            status: "accepted",
+        });
+
+        const filteredRequests = userRequestsThisMonth.filter((request) => {
+            const startDate = new Date(request.startDay);
+            const endDate = new Date(request.endDay);
+            return (
+                (startDate >= firstDayOfMonth && startDate <= lastDayOfMonth) ||
+                (endDate >= firstDayOfMonth && endDate <= lastDayOfMonth) ||
+                (startDate <= firstDayOfMonth && endDate >= lastDayOfMonth)
+            );
+        });
+
+        let days = [];
+        for (const request of filteredRequests) {
+            const startDay = new Date(request.startDay);
+            const endDay = new Date(request.endDay);
+            const daysBetween = getAllDaysBetween(startDay, endDay);
+            days.push(...daysBetween);
+        }
+        days = filterDaysInCurrentMonth(days);
+        days = await removeHolidays(days);
+
+        user.RemainingDaysOff = remainingDaysOff;
+        user.DaysOffTaken = days.length;
+        user.ListDayOff = days;
+
+        worksheet.addRow({
+            ID: user.ID,
+            fname: user.fullName,
+            address: user.address,
+            role: user.role,
+            RemainingDaysOff: user.RemainingDaysOff,
+            DaysOffTaken: user.DaysOffTaken,
+            ListDayOff: user.ListDayOff.join(', '),
+        });
+    }
+
+    await workbook.xlsx.writeFile(filePath);
+    console.log(200,"Export excel successfully!");
+},
+};
 
 
 
@@ -345,14 +344,31 @@ const getDaysBeforeAfterApril = (offDays) => {
   }
   return { daysBeforeApril, daysAfterApril };
 };
+function filterDaysInCurrentMonth(days) {
+  const currentMonth = new Date().getMonth() + 1;
+  const currentYear = new Date().getFullYear();
+  return days.filter((day) => {
+    const month = new Date(day).getMonth() + 1;
+    const year = new Date(day).getFullYear();
+    return month === currentMonth && year === currentYear;
+  });
+}
 
-
-cron.schedule("* * * * *", async () => { 
+setTimeout(async () => {
   try {
     await managerHandler.exportReport();
-      
   } catch (error) {
-      console.error( error);
+    console.error(error);
   }
-});
+}, 3000); 
+
+// const lastDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
+// const cronExpression = `0 17 ${lastDayOfMonth.getDate()} ${lastDayOfMonth.getMonth() + 1} *`;
+// cron.schedule(cronExpression, async () => {
+//   try {
+//     await managerHandler.exportReport();
+//   } catch (error) {
+//     console.error(error);
+//   }
+// });
 module.exports = managerHandler;
