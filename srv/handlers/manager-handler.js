@@ -22,12 +22,98 @@ const managerHandler = {
           });
       })
       .where("user.department_id", "=", manager.department_id)
-      .and(req.data.request ? {ID: req.data.request} : "");
+      .and(req.data.request ? { ID: req.data.request } : "");
 
     if (requests.length === 0) {
       return req.info(202, "There aren't any request yet!");
     }
     return (req.results = { code: 200, message: requests });
+  },
+
+  getRequestsForHr: async (req) => {
+    const { staffName, department, startDay, endDay } = req.data;
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+
+    if ((startDay && !endDay) || (!startDay && endDay))
+      return req.reject(
+        400,
+        "Searching by date must have both start day and end day"
+      );
+  
+    let startDate;
+    let endDate;
+    if (startDay && endDay) {
+      if (!dateRegex.test(startDay) || !dateRegex.test(endDay)) {
+        return req.reject(
+          400,
+          "Start day and end day must be in the yyyy-mm-dd format"
+        );
+      }
+      startDate = new Date(startDay + "T00:00:00Z");
+      endDate = new Date(endDay + "T23:59:59Z");
+
+      if (startDate >= endDate)
+        return req.reject(400, "End day must be after start day");
+    }
+    const hrStaff = await SELECT.one
+      .from(Users)
+      .columns((col) => {
+        col("fullName"),
+          col("address"),
+          col.department((department) => {
+            department("departmentName");
+            department("isHRDepartment");
+          });
+      })
+      .where({
+        ID: req.data.authentication.id,
+      })
+      .and("department.isHRDepartment", "=", true);
+    if (!hrStaff) return req.reject(400, "You're not from the HR department");
+
+    const query = SELECT.from(Requests).columns((col) => {
+      col("ID"),
+      col("status"),
+      col("reason"),
+      col("startDay"),
+      col("endDay"),
+      col("isOutOfDay"),
+      col("comment"),
+      col.user((user) => {
+        user("ID"),
+        user("fullName"),
+        user("username"),
+        user("address"),
+        user("isActive"),
+        user("role"),
+        user("dayOffThisYear"),
+        user("dayOffLastYear")
+      });
+    });
+
+    if (staffName) {
+      query.where({ "user.fullName": { like: `%${staffName}%` } });
+    }
+
+    if (department) {
+      query.where({ "user.department_id": department });
+    }
+
+    if (startDay && endDay) {
+      query.where({
+        startDay: { between: startDate, and: endDate },
+        or: {
+          endDay: { between: startDate, and: endDate },
+        },
+      });
+    }
+
+    const requests = await query;
+
+    return (req.results = {
+      code: 200,
+      data: requests,
+    });
   },
 
   update: async (_, req) => {
@@ -136,13 +222,8 @@ const managerHandler = {
     } catch (error) {
       return req.error(500, error.message);
     }
-
   },
 };
-        
- 
-
-
 
 const removeHolidays = async (offDays) => {
   const getHoliday = await SELECT.from(Calendar).where({
