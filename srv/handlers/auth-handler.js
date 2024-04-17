@@ -67,7 +67,8 @@ const authHandler = {
       req.results = {
         code: 201,
         message: "Welcome to the system!",
-      };    } catch (error) {
+      };
+    } catch (error) {
       req.reject(500, error.message);
     }
   },
@@ -98,6 +99,13 @@ const authHandler = {
       data: newAccessToken,
     };
   },
+  logout: async (req) => {
+    const decoded = verifyAccessToken(req.headers.authorization);
+
+    await UPDATE(Users)
+      .where({ ID: decoded.id })
+      .set({ refreshToken: null });
+  },
 };
 
 const calculateVacationDays = async (user_id) => {
@@ -109,7 +117,9 @@ const calculateVacationDays = async (user_id) => {
       const endOfYear = new Date(currentYear, 11, 31);
       const monthsPassed = endOfYear.getMonth() - createdAt.getMonth();
       const dayOffThisYear = monthsPassed * 1.25;
-      await UPDATE(Users).set({ dayOffThisYear: dayOffThisYear }).where({ ID: user_id });
+      await UPDATE(Users)
+        .set({ dayOffThisYear: dayOffThisYear })
+        .where({ ID: user_id });
     }
   } catch (error) {
     return { code: 500, message: error.message || "Internal Server Error" };
