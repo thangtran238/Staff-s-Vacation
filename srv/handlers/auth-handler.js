@@ -17,7 +17,7 @@ const authHandler = {
       if (!user || user.length !== 1)
         return req.reject(401, "Invalid username or password");
 
-      if (!(req.data.password === user[0].password)) {
+      if (!(await bcrypt.compare(user[0].password, req.data.password))) {
         return req.reject(401, "Invalid password");
       }
       const accessToken = generateAccessToken(user[0]);
@@ -102,9 +102,7 @@ const authHandler = {
   logout: async (req) => {
     const decoded = verifyAccessToken(req.headers.authorization);
 
-    await UPDATE(Users)
-      .where({ ID: decoded.id })
-      .set({ refreshToken: null });
+    await UPDATE(Users).where({ ID: decoded.id }).set({ refreshToken: null });
   },
 };
 
