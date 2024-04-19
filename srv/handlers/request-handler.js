@@ -28,6 +28,12 @@ const requestHandler = {
   },
 
   create: async (req) => {
+    const user = await SELECT.one
+    .from(Users)
+    .where({ ID: req.data.authentication.id });
+    if(user.department_id == null || undefined){
+      req.reject(400,"You haven't joined any faction yet.")
+    };
     const messaging = await cds.connect.to("messaging");
     const startDay = new Date(req.data.startDay);
     const endDay = new Date(req.data.endDay);
@@ -47,15 +53,12 @@ const requestHandler = {
         400,
         "Start day and end day must be after the current date."
       );
-    } else if (endDay <= startDay) {
+    } else if (endDay < startDay) {
       return req.reject(400, "End day must be after start day.");
     }
 
     const daysOff = getAllDaysBetween(startDay, endDay).length;
 
-    const user = await SELECT.one
-      .from(Users)
-      .where({ ID: req.data.authentication.id });
     if (daysOff > user.dayOffThisYear + user.dayOffLastYear) {
       await INSERT.into(Requests).entries({
         reason: req.data.reason,
@@ -98,21 +101,52 @@ const requestHandler = {
 
   update: async (req) => {
     try {
+      const currentDate = new Date();
       const findRequest = await SELECT.one
         .from(Requests)
         .where({ ID: req.data.ID });
       if (!findRequest) {
         return req.reject(404, "Couldn't find this request to update.");
       }
-      if (findRequest.status !== "pending") {
+      if  (findRequest.status !== "pending") {
         return req.reject(403, "Cannot update request");
       }
+      if  (req.data.startDay < currentDate || req.data.endDay < currentDate) {
+        return req.reject(
+          400,
+          "Start day and end day must be after the current date."
+        );
+      } 
+      else if (req.data.endDay < req.data.startDay) {
+        return req.reject(400, "End day must be after start day.");
+      }else if (req.data.startDay > findRequest.endDay) {
+        return req.reject(400, "Input start day invalid");
+      }
+      else if (req.data.endDay < findRequest.startDay) {
+        return req.reject(400, "Input end day invalid");
+      }
+
+      const updateData = {};
+      if (req.data.reason !== undefined && req.data.reason !== null) {
+        updateData.reason = req.data.reason;
+      }
+      if (req.data.startDay !== undefined && req.data.startDay !== null) {
+        updateData.startDay = req.data.startDay;
+      }
+      if (req.data.endDay !== undefined && req.data.endDay !== null) {
+        updateData.endDay = req.data.endDay;
+      }
+  
+      if (Object.keys(updateData).length === 0) {
+        return req.reject(400, "No valid fields provided for update.");
+      }
+  
       await cds
         .update(Requests)
-        .set({ reason: req.data.reason })
+        .set(updateData)
         .where({ ID: req.data.ID });
-
-      return req.info(200, `update successfully`);
+  
+      return req.info(200, `Update successful`);
     } catch (error) {
       console.error("Error occurred during request update:", error);
       return req.reject(
