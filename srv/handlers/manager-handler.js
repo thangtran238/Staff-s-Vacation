@@ -93,7 +93,7 @@ const managerHandler = {
     });
 
     if (staffName) {
-      query.where({ "user.fullName": { like: `%${staffName}%` } });
+      query.where({ "user.username": { like: `%${staffName}%` } });
     }
 
     if (department) {
