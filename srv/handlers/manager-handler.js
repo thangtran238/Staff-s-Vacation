@@ -1,5 +1,6 @@
 const cds = require("@sap/cds");
-
+const excelJS = require("exceljs");
+const cron = require("node-cron");
 const { Calendar, Users, Requests } = cds.entities;
 const managerHandler = {
   getRequests: async (req) => {
@@ -98,6 +99,7 @@ const managerHandler = {
     if (department) {
       query.where({ "user.department_id": department });
     }
+
 
     if (startDay && endDay) {
       query.where({
@@ -222,8 +224,83 @@ const managerHandler = {
     } catch (error) {
       return req.error(500, error.message);
     }
+
   },
+
+
+  exportReport: async () => {
+    const today = new Date();
+    const currentMonth = today.getMonth() + 1;
+    const currentYear = today.getFullYear();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+    const filePath =`C://Users//teri.vo//Documents//Excel_Report//Report_${currentMonth}_${currentYear}.xlsx`;
+    const workbook = new excelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Users");
+
+    worksheet.columns = [
+      { header: "ID", key: "ID", width: 15 },
+      { header: "FullName", key: "fname", width: 15 },
+      { header: "Address", key: "address", width: 25 },
+      { header: "Role", key: "role", width: 10 },
+      { header: "Remaining DaysOff", key: "RemainingDaysOff", width: 10 },
+      { header: "DaysOff Taken", key: "DaysOffTaken", width: 10 },
+      { header: "List DayOff", key: "ListDayOff", width: 10 },
+    ];
+
+ 
+   
+
+    const allUsers = await SELECT.from(Users).where({ isActive: true });
+
+    for (const user of allUsers) {
+        const remainingDaysOff = user.dayOffThisYear + user.dayOffLastYear;
+        const userRequestsThisMonth = await SELECT.from(Requests).where({
+            user_ID: user.ID,
+            status: "accepted",
+        });
+
+        const filteredRequests = userRequestsThisMonth.filter((request) => {
+            const startDate = new Date(request.startDay);
+            const endDate = new Date(request.endDay);
+            return (
+                (startDate >= firstDayOfMonth && startDate <= lastDayOfMonth) ||
+                (endDate >= firstDayOfMonth && endDate <= lastDayOfMonth) ||
+                (startDate <= firstDayOfMonth && endDate >= lastDayOfMonth)
+            );
+        });
+
+        let days = [];
+        for (const request of filteredRequests) {
+            const startDay = new Date(request.startDay);
+            const endDay = new Date(request.endDay);
+            const daysBetween = getAllDaysBetween(startDay, endDay);
+            days.push(...daysBetween);
+        }
+        days = filterDaysInCurrentMonth(days);
+        days = await removeHolidays(days);
+
+        user.RemainingDaysOff = remainingDaysOff;
+        user.DaysOffTaken = days.length;
+        user.ListDayOff = days;
+
+        worksheet.addRow({
+            ID: user.ID,
+            fname: user.fullName,
+            address: user.address,
+            role: user.role,
+            RemainingDaysOff: user.RemainingDaysOff,
+            DaysOffTaken: user.DaysOffTaken,
+            ListDayOff: user.ListDayOff.join(', '),
+        });
+    }
+
+    await workbook.xlsx.writeFile(filePath);
+    console.log(200,"Export excel successfully!");
+},
 };
+
 
 const removeHolidays = async (offDays) => {
   const getHoliday = await SELECT.from(Calendar).where({
@@ -285,5 +362,31 @@ const getDaysBeforeAfterApril = (offDays) => {
   }
   return { daysBeforeApril, daysAfterApril };
 };
+function filterDaysInCurrentMonth(days) {
+  const currentMonth = new Date().getMonth() + 1;
+  const currentYear = new Date().getFullYear();
+  return days.filter((day) => {
+    const month = new Date(day).getMonth() + 1;
+    const year = new Date(day).getFullYear();
+    return month === currentMonth && year === currentYear;
+  });
+}
 
+// setTimeout(async () => {
+//   try {
+//     await managerHandler.exportReport();
+//   } catch (error) {
+//     console.error(error);
+//   }
+// }, 3000); 
+
+const lastDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
+const cronExpression = `0 17 ${lastDayOfMonth.getDate()} ${lastDayOfMonth.getMonth() + 1} *`;
+cron.schedule(cronExpression, async () => {
+  try {
+    await managerHandler.exportReport();
+  } catch (error) {
+    console.error(error);
+  }
+});
 module.exports = managerHandler;
