@@ -354,21 +354,21 @@ function filterDaysInCurrentMonth(days) {
   });
 }
 
-setTimeout(async () => {
-  try {
-    await managerHandler.exportReport();
-  } catch (error) {
-    console.error(error);
-  }
-}, 3000); 
-
-// const lastDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
-// const cronExpression = `0 17 ${lastDayOfMonth.getDate()} ${lastDayOfMonth.getMonth() + 1} *`;
-// cron.schedule(cronExpression, async () => {
+// setTimeout(async () => {
 //   try {
 //     await managerHandler.exportReport();
 //   } catch (error) {
 //     console.error(error);
 //   }
-// });
+// }, 3000); 
+
+const lastDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
+const cronExpression = `0 17 ${lastDayOfMonth.getDate()} ${lastDayOfMonth.getMonth() + 1} *`;
+cron.schedule(cronExpression, async () => {
+  try {
+    await managerHandler.exportReport();
+  } catch (error) {
+    console.error(error);
+  }
+});
 module.exports = managerHandler;
