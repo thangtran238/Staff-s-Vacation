@@ -18,4 +18,5 @@ service AuthService @(path: '/auth') {
     action   login(username : String, password : String)                                                   returns String;
     action   signup(username : String, password : String, fname : String, address : String, role : String) returns String;
     function refresh()                                                                                     returns String;
+    function logout()                                                                                      returns String;
 }

@@ -7,13 +7,12 @@ type keyword {
 }
 
 service ManagerService @(path: '/manage') {
-
-    entity Notifications as projection on vacation.Notifications;
-    function getRequest(request : String)                                       returns String;
-    function getRequests()                                                      returns String;
-    action   createDepartment(departmentName : String)                          returns String;
-    action   inviteMember(department : Integer, members : array of String)      returns String;
-    action   updateRequest(request : String, action : String, comment : String) returns String;
-    action  getRequestsForHr(nameStaff : String null, department : Integer null, date : Date null) returns String;
+    entity Calendar as projection on vacation.Calendar;
+    function getNotifications(notify : String)                                                             returns String;
+    action   createDepartment(departmentName : String)                                                     returns String;
+    action   inviteMember(department : Integer, members : array of String)                                 returns String;
+    action   updateRequest(request : String, action : String, comment : String)                            returns String;
+    function getRequests(request : String)                                                                 returns String;
+    function getRequestsForHR(staffName : String, department : String, startDay : String, endDay : String) returns String;
 
 }

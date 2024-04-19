@@ -58,10 +58,9 @@ entity Departments : managed {
     key id             : Integer;
         departmentName : String;
         isHRDepartment : Boolean default false;
-        isActive       : Boolean default false;
-
         members        : Association to many Users
                              on members.department = $self;
+        isActive       : Boolean default true;
 
 }
 
