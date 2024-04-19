@@ -1,6 +1,0 @@
-###
-# Add a user
-POST http://localhost:4004/auth/Users
-Content-Type: application/json
-
-{"username": "teri.vo", "password": "123123"}
