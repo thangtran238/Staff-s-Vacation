@@ -24,7 +24,7 @@ const guard = {
     const department = await SELECT.one.from(Departments).where({
       id: authentication.department,
     });
-    if (department.isHRDepartment || authentication.role === "manager")
+    if (department?.isHRDepartment || authentication.role === "manager")
       return (req.data.authentication =  authentication );
 
    
