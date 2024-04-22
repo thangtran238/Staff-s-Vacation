@@ -31,11 +31,24 @@ const departmentHandler = {
   },
 
   invite: async (req) => {
-    try {
-      const department = await SELECT.one
-        .from(Departments)
-        .where({ id: req.data.department });
-      if (!department) return req.reject(404, "Couldn't find this department");
+      const getDepartment = await SELECT.one
+        .from(Users)
+        .columns((col) => {
+          col("username"),
+            col("fullName"),
+            col("role"),
+            col("address"),
+            col.department((department) => {
+              department("id");
+              department("departmentName");
+              department("isHRDepartment");
+              department("isActive");
+            });
+        })
+        .where("department.isActive", "=", true);
+        console.log(getDepartment);
+      if (!getDepartment)
+        return req.reject(404, "Couldn't find this department");
 
       let newMembers = [];
       let alreadyInDepartment = [];
@@ -43,11 +56,12 @@ const departmentHandler = {
 
       for (const member of req.data.members) {
         const user = await SELECT.one.from(Users).where({ ID: member });
+        console.log(user);
         if (user) {
           if (!user.department_id) {
             await UPDATE(Users)
               .where({ ID: user.ID })
-              .set({ department_id: req.data.department });
+              .set({ department_id: getDepartment.department.id });
             newMembers.push(member);
           } else {
             alreadyInDepartment.push(member);
@@ -75,9 +89,6 @@ const departmentHandler = {
       }
 
       return req.info(200, responseMessage.trim());
-    } catch (error) {
-      return req.error(500, error.message);
-    }
   },
 };
 
